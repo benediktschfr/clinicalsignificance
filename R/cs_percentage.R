@@ -116,55 +116,54 @@ cs_percentage <- function(
   pct_deterioration = NULL,
   better_is = c("lower", "higher")
 ) {
-  # Check arguments
+  rlang::arg_match(better_is)
+
   if (missing(id)) {
     cli::cli_abort(
-      "Argument {.code id} is missing with no default. A column containing patient-specific IDs must be supplied."
+      "Argument {.arg id} is missing. A column containing patient-specific IDs must be supplied."
     )
   }
   if (missing(time)) {
     cli::cli_abort(
-      "Argument {.code time} is missing with no default. A column identifying the individual measurements must be supplied."
+      "Argument {.arg time} is missing. A column identifying the individual measurements must be supplied."
     )
   }
   if (missing(outcome)) {
     cli::cli_abort(
-      "Argument {.code outcome} is missing with no default. A column containing the outcome must be supplied."
+      "Argument {.arg outcome} is missing. A column containing the outcome must be supplied."
     )
   }
+
   if (is.null(pct_improvement)) {
     cli::cli_abort(
-      "Argument {.code pct_improvement} is missing with no default. A percentage change that indicates clinically signifcant change must be supplied."
+      "Argument {.arg pct_improvement} is missing. A percentage change (between 0 and 1) must be supplied."
     )
   }
-  if (!is.null(pct_improvement) & !is.numeric(pct_improvement)) {
-    cli::cli_abort(
-      "{.code pct_improvement} must be numeric but a {.code {typeof(pct_improvement)}} was supplied."
-    )
+
+  if (is.numeric(pct_improvement) && pct_improvement > 1) {
+    cli::cli_abort(c(
+      "{.arg pct_improvement} must be a probability between 0 and 1.",
+      "i" = "Did you mean {.val {pct_improvement / 100}} ({pct_improvement}%)?"
+    ))
   }
-  if (!is.null(pct_improvement) & !dplyr::between(pct_improvement, 0, 1)) {
-    cli::cli_abort(
-      "{.code pct_improvement} must be between 0 and 1 but {pct_improvement} was supplied."
-    )
-  }
-  if (!is.null(pct_deterioration)) {
-    if (!is.numeric(pct_deterioration)) {
-      cli::cli_abort(
-        "{.code pct_deterioration} must be numeric but a {.code {typeof(pct_deterioration)}} was supplied."
-      )
-    }
-    if (!dplyr::between(pct_deterioration, 0, 1)) {
-      cli::cli_abort(
-        "{.code pct_deterioration} must be between 0 and 1 but {pct_deterioration} was supplied."
-      )
-    }
-  }
+  checkmate::assert_number(pct_improvement, lower = 0, upper = 1, finite = TRUE)
+
+  checkmate::assert_number(
+    pct_deterioration,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+
+  checkmate::assert_data_frame(data)
 
   if (is.null(pct_deterioration)) {
     pct_deterioration <- pct_improvement
   }
 
   # Prepare the data
+  # Hier nutzen wir wieder den simplifizierten Aufruf, falls du .prep_data angepasst hast
   datasets <- .prep_data(
     data = data,
     id = {{ id }},
@@ -175,7 +174,7 @@ cs_percentage <- function(
     post = {{ post }}
   )
 
-  # Prepend a class to enable method dispatch for RCI calculation
+  # Prepend a class
   class(datasets) <- c("cs_percentage", class(datasets))
 
   # Count participants
@@ -184,12 +183,8 @@ cs_percentage <- function(
     n_used = nrow(datasets[["data"]])
   )
 
-  # Get the direction of a beneficial intervention effect
-  if (rlang::arg_match(better_is) == "lower") {
-    direction <- -1
-  } else {
-    direction <- 1
-  }
+  # Get direction (safe, da oben gecheckt)
+  direction <- if (better_is[1] == "lower") -1 else 1
 
   # Determine RCI and check each participant's change relative to it
   pct_results <- calc_percentage(
@@ -199,7 +194,7 @@ cs_percentage <- function(
     direction = direction
   )
 
-  # Create the summary table for printing and exporting
+  # Create the summary table
   summary_table <- create_summary_table(
     x = pct_results,
     data = datasets
@@ -207,7 +202,7 @@ cs_percentage <- function(
 
   class(pct_results) <- c("tbl_df", "tbl", "data.frame")
 
-  # Put everything into a list
+  # Output list
   output <- list(
     datasets = datasets,
     pct_results = pct_results,
