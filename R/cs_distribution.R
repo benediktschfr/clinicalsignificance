@@ -194,53 +194,60 @@ cs_distribution <- function(
   rci_method = c("JT", "GLN", "HLL", "EN", "NK", "HA", "HLM"),
   significance_level = 0.05
 ) {
-  # Check arguments
   cs_method <- rlang::arg_match(rci_method)
+  rlang::arg_match(better_is)
+
   if (missing(id)) {
     cli::cli_abort(
-      "Argument {.code id} is missing with no default. A column containing patient-specific IDs must be supplied."
+      "Argument {.arg id} is missing. A column containing patient-specific IDs must be supplied."
     )
   }
   if (missing(time)) {
     cli::cli_abort(
-      "Argument {.code time} is missing with no default. A column identifying the individual measurements must be supplied."
+      "Argument {.arg time} is missing. A column identifying the individual measurements must be supplied."
     )
   }
   if (missing(outcome)) {
     cli::cli_abort(
-      "Argument {.code outcome} is missing with no default. A column containing the outcome must be supplied."
+      "Argument {.arg outcome} is missing. A column containing the outcome must be supplied."
     )
-  }
-  if (cs_method != "HLM") {
-    if (is.null(reliability)) {
-      cli::cli_abort(
-        "Argument {.code reliability} is missing with no default. An instrument reliability must be supplied."
-      )
-    }
-    if (!is.null(reliability) & !is.numeric(reliability)) {
-      cli::cli_abort(
-        "{.code reliability} must be numeric but a {.code {typeof(reliability)}} was supplied."
-      )
-    }
-    if (!is.null(reliability) & !dplyr::between(reliability, 0, 1)) {
-      cli::cli_abort(
-        "{.code reliability} must be between 0 and 1 but {reliability} was supplied."
-      )
-    }
   }
 
-  # For the NK RCI method, a reliability for the post measurement must be
-  # supplied. If this is not the case, reliability_post will be set to the
-  # reliabiliy (pre) value and the user will be informed of this decision
-  if (cs_method == "NK" & missing(reliability_post)) {
-    reliability_post <- reliability
-    cli::cli_inform(
-      "The NK method requires reliability estimates for both,
-                      the pre and post measurement. You can specify the post
-                      reliability with the {.code reliability_post} argument.
-                      For now, {.code reliability_post} was set to
-                      {.code reliability}."
+  checkmate::assert_data_frame(data)
+  checkmate::assert_number(
+    significance_level,
+    lower = 0,
+    upper = 1,
+    finite = TRUE
+  )
+
+  checkmate::assert_number(
+    reliability,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+  checkmate::assert_number(
+    reliability_post,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+
+  if (cs_method != "HLM" && is.null(reliability)) {
+    cli::cli_abort(
+      "Argument {.arg reliability} is required for method {.val {cs_method}}."
     )
+  }
+
+  if (cs_method == "NK" && is.null(reliability_post)) {
+    reliability_post <- reliability
+    cli::cli_alert_info(c(
+      "The NK method requires reliability estimates for both pre and post measurement.",
+      "i" = "Argument {.arg reliability_post} was not supplied, so {.arg reliability} ({reliability}) is used for both."
+    ))
   }
 
   # Prepare the data
@@ -255,7 +262,7 @@ cs_distribution <- function(
     method = cs_method
   )
 
-  # Prepend a class to enable method dispatch for RCI calculation
+  # Prepend a class
   class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
 
   # Count participants
@@ -264,29 +271,31 @@ cs_distribution <- function(
     n_used = nrow(datasets[["data"]])
   )
 
-  # Calculate relevant summary statistics for the chosen RCI method
-  m_pre <- mean(datasets[["data"]][["pre"]])
-  sd_pre <- stats::sd(datasets[["data"]][["pre"]])
-  if (cs_method %in% c("HLL", "HA")) {
-    m_post <- mean(datasets[["data"]][["post"]])
-    sd_post <- stats::sd(datasets[["data"]][["post"]])
+  # Summary Stats (Pre ist immer nötig)
+  m_pre <- mean(datasets[["data"]][["pre"]], na.rm = TRUE)
+  sd_pre <- stats::sd(datasets[["data"]][["pre"]], na.rm = TRUE)
+
+  # Init Post Stats
+  m_post <- NULL
+  sd_post <- NULL
+
+  # Calculate Post Stats if available
+  if (!is.null(datasets[["data"]][["post"]])) {
+    m_post <- mean(datasets[["data"]][["post"]], na.rm = TRUE)
+    sd_post <- stats::sd(datasets[["data"]][["post"]], na.rm = TRUE)
   }
 
-  # Get the direction of a beneficial intervention effect
-  if (rlang::arg_match(better_is) == "lower") {
-    direction <- -1
-  } else {
-    direction <- 1
-  }
+  # Direction
+  direction <- if (better_is[1] == "lower") -1 else 1
 
-  # Determine critical RCI value based on significance level
+  # Critical Value
   if (cs_method != "HA") {
     critical_value <- stats::qnorm(1 - significance_level / 2)
   } else {
     critical_value <- stats::qnorm(1 - significance_level)
   }
 
-  # Determine RCI and check each participant's change relative to it
+  # Calculate RCI
   rci_results <- calc_rci(
     data = datasets,
     m_pre = m_pre,
@@ -299,7 +308,7 @@ cs_distribution <- function(
     critical_value = critical_value
   )
 
-  # Create the summary table for printing and exporting
+  # Summary Table
   summary_table <- create_summary_table(
     x = rci_results,
     data = datasets
@@ -307,7 +316,7 @@ cs_distribution <- function(
 
   class(rci_results) <- "list"
 
-  # Put everything into a list
+  # Output Construction
   output <- list(
     datasets = datasets,
     rci_results = rci_results,
@@ -319,7 +328,7 @@ cs_distribution <- function(
     summary_table = summary_table
   )
 
-  # Return output
+  # Return
   class(output) <- c(
     "cs_analysis",
     "cs_distribution",
