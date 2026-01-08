@@ -1,95 +1,3 @@
-#' Combined Analysis of Clinical Significance
-#'
-#' @description `cs_combined()` can be used to determine the clinical
-#'   significance of intervention studies employing the combination of the
-#'   distribution-based and statistical approach. For this, it will be assumed
-#'   that the functional (non-clinical population) and patient (clinical
-#'   population) scores form two distinct distributions on a continuum.
-#'   `cs_combined()` calculates a cutoff point between these two populations as
-#'   well as a reliable change index (RCI) based on a provided instrument
-#'   reliability estimate and counts, how many of those patients that showed a
-#'   reliable change (that is likely to be not due to measurement error)
-#'   switched from the clinical to the functional population during
-#'   intervention. Several methods for calculating the cutoff and RCI are
-#'   available.
-#'
-#' @inheritSection cs_statistical Computational details
-#' @inheritSection cs_distribution Computational details
-#'
-#' @section Categories: Each individual's change can then be categorized into
-#'   the following groups:
-#' - Recovered, i.e., the individual showed a reliable change in the beneficial direction and changed from the clinical to the functional population
-#' - Improved, i.e., the individual showed a reliable change in the beneficial direction but did not change populations
-#' - Unchanged, i.e., the individual showed no reliable change
-#' - Deteriorated, i.e., the individual showed a reliable change in the disadvantageous direction but did not change populations
-#' - Harmed, i.e., the individual showed a reliable change in the disadvantageous direction and switched from the functional to the clinincal population
-#'
-#' @inheritSection cs_distribution Data preparation
-#'
-#' @inheritParams cs_distribution
-#' @inheritParams cs_statistical
-#' @inheritParams cs_anchor
-#'
-#' @family main
-#'
-#' @return An S3 object of class `cs_analysis` and `cs_combined`
-#' @export
-#'
-#' @examples
-# In this case, cutoff "a" is chosen by default
-#' cs_results <- claus_2020 |>
-#'   cs_combined(
-#'     id,
-#'     time,
-#'     bdi,
-#'     pre = 1,
-#'     post = 4,
-#'     reliability = 0.80
-#'   )
-#'
-#' cs_results
-#' summary(cs_results)
-#' plot(cs_results)
-#'
-#'
-#' # You can choose a different cutoff but must provide summary statistics for the
-#' # functional population
-#' cs_results_c <- claus_2020 |>
-#'   cs_combined(
-#'     id,
-#'     time,
-#'     bdi,
-#'     pre = 1,
-#'     post = 4,
-#'     reliability = 0.80,
-#'     m_functional = 8,
-#'     sd_functional = 8,
-#'     cutoff_type = "c"
-#'   )
-#'
-#' cs_results_c
-#' summary(cs_results_c)
-#' plot(cs_results_c)
-#'
-#'
-#' # You can group the analysis by providing a grouping variable in the data
-#' cs_results_grouped <- claus_2020 |>
-#'   cs_combined(
-#'     id,
-#'     time,
-#'     bdi,
-#'     pre = 1,
-#'     post = 4,
-#'     group = treatment,
-#'     reliability = 0.80,
-#'     m_functional = 8,
-#'     sd_functional = 8,
-#'     cutoff_type = "c"
-#'   )
-#'
-#' cs_results_grouped
-#' summary(cs_results_grouped)
-#' plot(cs_results_grouped)
 cs_combined <- function(
   data,
   id,
@@ -109,54 +17,83 @@ cs_combined <- function(
   cutoff_type = c("a", "b", "c"),
   significance_level = 0.05
 ) {
-  # Argument checks
   cs_method <- rlang::arg_match(rci_method)
   cut_type <- rlang::arg_match(cutoff_type)
+  rlang::arg_match(better_is)
+
   if (missing(id)) {
     cli::cli_abort(
-      "Argument {.code id} is missing with no default. A column containing patient-specific IDs must be supplied."
+      "Argument {.arg id} is missing. A column containing patient-specific IDs must be supplied."
     )
   }
   if (missing(time)) {
     cli::cli_abort(
-      "Argument {.code time} is missing with no default. A column identifying the individual measurements must be supplied."
+      "Argument {.arg time} is missing. A column identifying the individual measurements must be supplied."
     )
   }
   if (missing(outcome)) {
     cli::cli_abort(
-      "Argument {.code outcome} is missing with no default. A column containing the outcome must be supplied."
+      "Argument {.arg outcome} is missing. A column containing the outcome must be supplied."
     )
   }
-  if (is.null(mid_improvement) & cs_method != "HLM") {
+
+  checkmate::assert_data_frame(data)
+  checkmate::assert_number(
+    significance_level,
+    lower = 0,
+    upper = 1,
+    finite = TRUE
+  )
+
+  checkmate::assert_number(
+    mid_improvement,
+    lower = 0,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+  checkmate::assert_number(
+    mid_deterioration,
+    lower = 0,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+  checkmate::assert_number(
+    reliability,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+  checkmate::assert_number(
+    reliability_post,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+  checkmate::assert_number(m_functional, finite = TRUE, null.ok = TRUE)
+  checkmate::assert_number(
+    sd_functional,
+    lower = 0,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+
+  if (is.null(mid_improvement) && cs_method != "HLM") {
     if (is.null(reliability)) {
       cli::cli_abort(
-        "Argument {.code reliability} is missing with no default. An instrument reliability must be supplied."
-      )
-    }
-    if (!is.null(reliability) & !is.numeric(reliability)) {
-      cli::cli_abort(
-        "{.code reliability} must be numeric but a {.code {typeof(reliability)}} was supplied."
-      )
-    }
-    if (!is.null(reliability) & !dplyr::between(reliability, 0, 1)) {
-      cli::cli_abort(
-        "{.code reliability} must be between 0 and 1 but {reliability} was supplied."
+        "Argument {.arg reliability} is required when using distribution-based RCI methods (except HLM)."
       )
     }
   }
+
   if (cut_type %in% c("b", "c")) {
-    if (is.null(m_functional) | is.null(sd_functional)) {
-      cli::cli_abort(
-        "For cutoffs {.code b} and {.code c}, mean and standard deviation for a functional population must be provided via {.code m_functional} and {.code sd_functional}"
-      )
-    }
-    if (
-      (!is.null(m_functional) & !is.numeric(m_functional)) |
-        (!is.null(sd_functional) & !is.numeric(sd_functional))
-    ) {
-      cli::cli_abort(
-        "The mean and standard deviation supplied with {.code m_functional} and {.code sd_functional} must be numeric."
-      )
+    if (is.null(m_functional) || is.null(sd_functional)) {
+      cli::cli_abort(c(
+        "Functional population statistics missing.",
+        "x" = "For cutoff types {.val b} and {.val c}, mean and SD of the functional population are required.",
+        "i" = "Please supply {.arg m_functional} and {.arg sd_functional}."
+      ))
     }
   }
 
@@ -172,14 +109,18 @@ cs_combined <- function(
     method = cs_method
   )
 
-  # Prepend a class to enable method dispatch for RCI calculation
-  if (!is.null(mid_improvement)) {
+  # Determine Classes & Method Name
+  use_anchor <- !is.null(mid_improvement)
+
+  if (use_anchor) {
     class(datasets) <- c("cs_anchor_individual_within", class(datasets))
-  } else {
-    class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
-  }
-  if (!is.null(mid_improvement)) {
     cs_method <- "CWB"
+
+    # Defaults handling
+    if (is.null(mid_deterioration)) mid_deterioration <- mid_improvement
+  } else {
+    # Distribution-Based Logic
+    class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
   }
 
   # Count participants
@@ -188,30 +129,31 @@ cs_combined <- function(
     n_used = nrow(datasets[["data"]])
   )
 
-  # Calculate relevant summary statistics for the chosen RCI method
-  m_pre <- mean(datasets[["data"]][["pre"]])
-  sd_pre <- stats::sd(datasets[["data"]][["pre"]])
-  if (cs_method %in% c("HLL", "HA")) {
-    m_post <- mean(datasets[["data"]][["post"]])
-    sd_post <- stats::sd(datasets[["data"]][["post"]])
+  # Summary Stats (Pre ist immer nötig)
+  m_pre <- mean(datasets[["data"]][["pre"]], na.rm = TRUE)
+  sd_pre <- stats::sd(datasets[["data"]][["pre"]], na.rm = TRUE)
+
+  # Init Post Stats (Safety)
+  m_post <- NULL
+  sd_post <- NULL
+
+  if (!is.null(datasets[["data"]][["post"]])) {
+    m_post <- mean(datasets[["data"]][["post"]], na.rm = TRUE)
+    sd_post <- stats::sd(datasets[["data"]][["post"]], na.rm = TRUE)
   }
 
-  # Get the direction of a beneficial intervention effect
-  if (rlang::arg_match(better_is) == "lower") {
-    direction <- -1
-  } else {
-    direction <- 1
-  }
+  # Direction
+  direction <- if (better_is[1] == "lower") -1 else 1
 
-  # Determine critical RCI value based on significance level
+  # Critical Value
   if (cs_method != "HA") {
     critical_value <- stats::qnorm(1 - significance_level / 2)
   } else {
     critical_value <- stats::qnorm(1 - significance_level)
   }
 
-  if (is.null(mid_improvement)) {
-    # Determine RCI and check each participant's change relative to it
+  if (!use_anchor) {
+    # Path A: Standard RCI (Distribution)
     rci_results <- calc_rci(
       data = datasets,
       m_pre = m_pre,
@@ -224,11 +166,7 @@ cs_combined <- function(
       critical_value = critical_value
     )
   } else {
-    # Check each participant's or group change relative to MID
-    if (is.null(mid_deterioration)) {
-      mid_deterioration <- mid_improvement
-    }
-
+    # Path B: Anchor Based
     rci_results <- calc_anchor(
       data = datasets,
       mid_improvement = mid_improvement,
@@ -237,7 +175,7 @@ cs_combined <- function(
     )
   }
 
-  # Calculate the cutoff value and check each patient's change relative to it
+  # Cutoff (immer berechnet)
   cutoff_results <- calc_cutoff_from_data(
     data = datasets,
     m_clinical = m_pre,
@@ -252,28 +190,24 @@ cs_combined <- function(
     critical_value = critical_value
   )
 
+  # Formatting Classes
   class(rci_results) <- c("cs_combined", "list")
+  class(cutoff_results) <- "list"
 
-  # Create the summary table for printing and exporting
+  # Summary Table
   summary_table <- create_summary_table(
     x = rci_results,
     cutoff_results = cutoff_results,
     data = datasets,
     method = cs_method,
-    r_dd = rci_results[["r_dd"]],
-    se_measurement = rci_results[["se_measurement"]],
+    r_dd = rci_results[["r_dd"]], # Kann NULL sein bei Anchor
+    se_measurement = rci_results[["se_measurement"]], # Kann NULL sein bei Anchor
     cutoff = cutoff_results[["info"]][["value"]],
     sd_post = sd_post,
     direction = direction
   )
 
-  class(rci_results) <- "list"
-  class(cutoff_results) <- "list"
-  if (!is.null(mid_improvement)) {
-    cs_method <- "CWB"
-  }
-
-  # Put everything into a list
+  # Output Construction
   output <- list(
     datasets = datasets,
     cutoff_results = cutoff_results,
@@ -289,7 +223,7 @@ cs_combined <- function(
     summary_table = summary_table
   )
 
-  # Return output
+  # Return
   class(output) <- c(
     "cs_analysis",
     "cs_combined",
