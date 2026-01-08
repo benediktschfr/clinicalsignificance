@@ -239,69 +239,53 @@ cs_anchor <- function(
 ) {
   cs_target <- rlang::arg_match(target)
   cs_effect <- rlang::arg_match(effect)
+  rlang::arg_match(better_is)
 
-  # Check arguments
   if (missing(id)) {
     cli::cli_abort(
-      "Argument {.code id} is missing with no default. A column containing patient-specific IDs must be supplied."
+      "Argument {.arg id} is missing. A column containing patient-specific IDs must be supplied."
     )
   }
   if (missing(time)) {
     cli::cli_abort(
-      "Argument {.code time} is missing with no default. A column identifying the individual measurements must be supplied."
+      "Argument {.arg time} is missing. A column identifying the individual measurements must be supplied."
     )
   }
   if (missing(outcome)) {
     cli::cli_abort(
-      "Argument {.code outcome} is missing with no default. A column containing the outcome must be supplied."
+      "Argument {.arg outcome} is missing. A column containing the outcome must be supplied."
     )
   }
-  if (is.null(mid_improvement)) {
-    cli::cli_abort(
-      "Argument {.code mid_improvement} is missing with no default. A percentage change that indicates clinically signifcant change must be supplied."
-    )
-  }
-  if (!is.null(mid_improvement) & !is.numeric(mid_improvement)) {
-    cli::cli_abort(
-      "{.code mid_improvement} must be numeric but a {.code {typeof(mid_improvement)}} was supplied."
-    )
-  }
-  if (!is.null(mid_improvement) & mid_improvement < 0) {
-    cli::cli_abort(
-      "{.code mid_improvement} must be greater than 0 but {mid_improvement} was supplied."
-    )
-  }
-  if (!dplyr::between(ci_level, 0, 1)) {
-    cli::cli_abort(
-      "{.code ci_level} must be between 0 and 1 but {ci_level} was supplied."
-    )
-  }
-  if (!is.null(mid_deterioration)) {
-    if (!is.numeric(mid_deterioration)) {
-      cli::cli_abort(
-        "{.code mid_deterioration} must be numeric but a {.code {typeof(mid_deterioration)}} was supplied."
-      )
-    }
-    if (mid_deterioration < 0) {
-      cli::cli_abort(
-        "{.code mid_deterioration} must be greater than 0 but {mid_deterioration} was supplied."
-      )
-    }
-  }
+
+  checkmate::assert_number(mid_improvement, lower = 0, finite = TRUE)
+  checkmate::assert_number(ci_level, lower = 0, upper = 1, finite = TRUE)
+  checkmate::assert_number(
+    mid_deterioration,
+    lower = 0,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+
+  checkmate::assert_data_frame(data)
+  checkmate::assert_logical(bayesian, len = 1)
+
+  # 4. Logik-Checks für Design
   if (cs_effect == "between") {
     if (cs_target == "individual") {
-      cli::cli_abort(
-        "A between subjects design can only be chosen if groups should be examined, but not individuals. Did you mean to set {.code target = \"group\"}?"
-      )
+      cli::cli_abort(c(
+        "Invalid design specification.",
+        "x" = "A {.val between} subjects design cannot be calculated for {.val individual} targets.",
+        "i" = "Did you mean to set {.code target = \"group\"}?"
+      ))
     }
     if (missing(group)) {
       cli::cli_abort(
-        "To calculate the difference between several groups, {.code group} must be set to a column containing a group identifier."
+        "Argument {.arg group} is missing. Necessary for between-group calculations."
       )
     }
     if (is.null(post)) {
       cli::cli_abort(
-        "Argument {.code post} is missing with no default. The measurement for which groupwise differences should be calculated must be supplied."
+        "Argument {.arg post} is missing. Please specify the measurement timepoint for group comparison."
       )
     }
   }
