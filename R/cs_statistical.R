@@ -140,62 +140,76 @@ cs_statistical <- function(
   cutoff_type = c("a", "b", "c"),
   significance_level = 0.05
 ) {
-  # Check arguments
   cs_method <- rlang::arg_match(cutoff_method)
   cut_type <- rlang::arg_match(cutoff_type)
+  rlang::arg_match(better_is)
+
   if (missing(id)) {
     cli::cli_abort(
-      "Argument {.code id} is missing with no default. A column containing patient-specific IDs must be supplied."
+      "Argument {.arg id} is missing. A column containing patient-specific IDs must be supplied."
     )
   }
   if (missing(time)) {
     cli::cli_abort(
-      "Argument {.code time} is missing with no default. A column identifying the individual measurements must be supplied."
+      "Argument {.arg time} is missing. A column identifying the individual measurements must be supplied."
     )
   }
   if (missing(outcome)) {
     cli::cli_abort(
-      "Argument {.code outcome} is missing with no default. A column containing the outcome must be supplied."
+      "Argument {.arg outcome} is missing. A column containing the outcome must be supplied."
     )
   }
-  if (cs_method == "HA") {
-    if (is.null(reliability)) {
-      cli::cli_abort(
-        "Argument {.code reliability} is missing with no default. An instrument reliability must be supplied."
-      )
-    }
-    if (!is.null(reliability) & !is.numeric(reliability)) {
-      cli::cli_abort(
-        "{.code reliability} must be numeric but a {.code {typeof(reliability)}} was supplied."
-      )
-    }
-    if (!is.null(reliability) & !dplyr::between(reliability, 0, 1)) {
-      cli::cli_abort(
-        "{.code reliability} must be between 0 and 1 but {reliability} was supplied."
-      )
-    }
-  } else {
-    if (!is.null(reliability)) {
-      cli::cli_alert_info(
-        "A reliability for the JT approach to calculating a population cutoff is not needed and will be ignored."
-      )
-    }
+
+  checkmate::assert_data_frame(data)
+  checkmate::assert_number(
+    significance_level,
+    lower = 0,
+    upper = 1,
+    finite = TRUE
+  )
+
+  # Optionale Parameter checken (dürfen NULL sein, aber WENN da, dann korrekt)
+  checkmate::assert_number(m_functional, finite = TRUE, null.ok = TRUE)
+  checkmate::assert_number(
+    sd_functional,
+    lower = 0,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+  checkmate::assert_number(
+    reliability,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    null.ok = TRUE
+  )
+
+  # Fall: Hageman & Arrindell (HA) braucht Reliability
+  if (cs_method == "HA" && is.null(reliability)) {
+    cli::cli_abort(
+      "Argument {.arg reliability} is required when {.code cutoff_method = \"HA\"}."
+    )
   }
+
+  # Fall: Jacobson & Truax (JT) braucht keine Reliability -> Info an User
+  if (cs_method == "JT" && !is.null(reliability)) {
+    cli::cli_alert_info(
+      "Argument {.arg reliability} is not used for the JT approach and will be ignored."
+    )
+  }
+
+  # Fall: Cutoff b oder c braucht funktionale Populationsdaten
   if (cut_type %in% c("b", "c")) {
-    if (is.null(m_functional) | is.null(sd_functional)) {
-      cli::cli_abort(
-        "For cutoffs {.code b} and {.code c}, mean and standard deviation for a functional population must be provided via {.code m_functional} and {.code sd_functional}"
-      )
-    }
-    if (
-      (!is.null(m_functional) & !is.numeric(m_functional)) |
-        (!is.null(sd_functional) & !is.numeric(sd_functional))
-    ) {
-      cli::cli_abort(
-        "The mean and standard deviation supplied with {.code m_functional} and {.code sd_functional} must be numeric."
-      )
+    if (is.null(m_functional) || is.null(sd_functional)) {
+      cli::cli_abort(c(
+        "Functional population statistics missing.",
+        "x" = "For cutoff types {.val b} and {.val c}, mean and SD of the functional population are required.",
+        "i" = "Please supply {.arg m_functional} and {.arg sd_functional}."
+      ))
     }
   }
+
+  # --- Ab hier: Datenvorbereitung & Berechnung ---
 
   # Prepare the data
   datasets <- .prep_data(
@@ -209,7 +223,7 @@ cs_statistical <- function(
     method = cs_method
   )
 
-  # Prepend a class to enable method dispatch for RCI calculation
+  # Prepend a class
   class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
 
   # Count participants
@@ -218,29 +232,33 @@ cs_statistical <- function(
     n_used = nrow(datasets[["data"]])
   )
 
-  # Calculate relevant summary statistics for the chosen RCI method
-  m_pre <- mean(datasets[["data"]][["pre"]])
-  sd_pre <- stats::sd(datasets[["data"]][["pre"]])
+  # Calculate relevant summary statistics
+  m_pre <- mean(datasets[["data"]][["pre"]], na.rm = TRUE)
+  sd_pre <- stats::sd(datasets[["data"]][["pre"]], na.rm = TRUE)
+
+  # Initialisierung (Safety, falls JT gewählt wurde, damit Variablen existieren)
+  m_post <- NULL
+  sd_post <- NULL
+
+  # HLL war in deinem Originalcode erwähnt, aber nicht in den Argumenten.
+  # Ich lasse es drin, falls es intern genutzt wird.
   if (cs_method %in% c("HLL", "HA")) {
-    m_post <- mean(datasets[["data"]][["post"]])
-    sd_post <- stats::sd(datasets[["data"]][["post"]])
+    m_post <- mean(datasets[["data"]][["post"]], na.rm = TRUE)
+    sd_post <- stats::sd(datasets[["data"]][["post"]], na.rm = TRUE)
   }
 
-  # Get the direction of a beneficial intervention effect
-  if (rlang::arg_match(better_is) == "lower") {
-    direction <- -1
-  } else {
-    direction <- 1
-  }
+  # Direction
+  direction <- if (better_is[1] == "lower") -1 else 1
 
-  # Determine critical RCI value based on significance level
+  # Critical Value
+  # qnorm(0.975) für 2-sided 0.05 (JT), qnorm(0.95) für 1-sided (HA - falls das die Logik ist)
   if (cs_method != "HA") {
     critical_value <- stats::qnorm(1 - significance_level / 2)
   } else {
     critical_value <- stats::qnorm(1 - significance_level)
   }
 
-  # Calculate the cutoff value and check each patient's change relative to it
+  # Calculate cutoff
   cutoff_results <- calc_cutoff_from_data(
     data = datasets,
     m_clinical = m_pre,
@@ -255,7 +273,7 @@ cs_statistical <- function(
     critical_value = critical_value
   )
 
-  # Create the summary table for printing and exporting
+  # Summary table
   summary_table <- create_summary_table(
     x = cutoff_results,
     data = datasets,
@@ -264,7 +282,7 @@ cs_statistical <- function(
 
   class(cutoff_results) <- "list"
 
-  # Put everything into a list
+  # Output structure
   output <- list(
     datasets = datasets,
     cutoff_results = cutoff_results,
