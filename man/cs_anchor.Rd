@@ -14,13 +14,7 @@ cs_anchor(
   post = NULL,
   mid_improvement = NULL,
   mid_deterioration = NULL,
-  better_is = c("lower", "higher"),
-  target = c("individual", "group"),
-  effect = c("within", "between"),
-  bayesian = TRUE,
-  prior_scale = "medium",
-  reference_group = NULL,
-  ci_level = 0.95
+  better_is = c("lower", "higher")
 )
 }
 \arguments{
@@ -53,42 +47,6 @@ instrument? Available are
 \item \code{"lower"} (lower outcome scores are desirable, the default) and
 \item \code{"higher"} (higher outcome scores are desirable)
 }}
-
-\item{target}{String, whether an individual or group analysis should be
-calculated. Available are
-\itemize{
-\item \code{"individual"} (the default) for which every individual participant is
-evaluated
-\item \code{"group"} for which only the group wise effect is evaluated
-}}
-
-\item{effect}{String, if \code{target = "group"}, specify which effect should be
-calculated. Available are
-\itemize{
-\item \code{"within"} (the default), which yields the mean pre-post intervention
-difference with associated confidence intervals
-\item \code{"between"}, which estimates the group wise mean difference and
-confidence intervals between two or more groups specified with the \code{group}
-argument at the specified measurement supplied with the \code{post}- argument
-The reference group may be supplied with \code{reference_group}
-}}
-
-\item{bayesian}{Logical, only relevant if \code{target = "group"}. Indicates if a
-Bayesian estimate (i.e., the median) of group differences with a credible
-interval should be calculated (if set to \code{TRUE}, the default) or a
-frequentist mean difference with confidence interval (if set to \code{FALSE})}
-
-\item{prior_scale}{String or numeric, can be adjusted to change the Bayesian
-prior distribution. See the documentation for \code{rscale} in
-\code{\link[BayesFactor:ttestBF]{BayesFactor::ttestBF()}} for details.}
-
-\item{reference_group}{Specify the reference group to which all subsequent
-groups are compared against if \code{target = "group"} and \code{effect = "within"}
-(optional). Otherwise, the first distinct group is chosen based on
-alphabetical, numerical or factor ordering.}
-
-\item{ci_level}{Numeric, define the credible or confidence interval level.
-The default is 0.95 for a 95\%-CI.}
 }
 \value{
 An S3 object of class \code{cs_analysis} and \code{cs_anchor}
@@ -227,76 +185,6 @@ plot(cs_results_grouped)
 # modified with ggplot2 code, e.g., facetting to avoid overplotting of groups
 plot(cs_results_grouped) +
   ggplot2::facet_wrap(~ group)
-
-
-# Compute group wise results
-cs_results_groupwise <- antidepressants |>
-  cs_anchor(
-    patient,
-    measurement,
-    mom_di,
-    pre = "Before",
-    mid_improvement = 8,
-    target = "group"
-  )
-
-cs_results_groupwise
-summary(cs_results_groupwise)
-plot(cs_results_groupwise)
-
-
-# Group wise analysis, but split by experimentawl condition
-cs_results_groupwise_condition <- antidepressants |>
-  cs_anchor(
-    patient,
-    measurement,
-    mom_di,
-    pre = "Before",
-    group = condition,
-    mid_improvement = 8,
-    target = "group"
-  )
-
-cs_results_groupwise_condition
-summary(cs_results_groupwise_condition)
-plot(cs_results_groupwise_condition)
-
-
-# Compare all groups to a predefined reference group at a predefined measurement
-cs_results_groupwise_between <- antidepressants |>
-  cs_anchor(
-    patient,
-    measurement,
-    mom_di,
-    post = "After",
-    group = condition,
-    mid_improvement = 8,
-    target = "group",
-    effect = "between"
-  )
-
-cs_results_groupwise_between
-summary(cs_results_groupwise_between)
-plot(cs_results_groupwise_between)
-
-
-# Compare all groups to a predefined reference group with frequentist appraoch
-cs_results_groupwise_between_freq <- antidepressants |>
-  cs_anchor(
-    patient,
-    measurement,
-    mom_di,
-    post = "After",
-    group = condition,
-    mid_improvement = 8,
-    target = "group",
-    effect = "between",
-    bayesian = FALSE
-  )
-
-cs_results_groupwise_between_freq
-summary(cs_results_groupwise_between_freq)
-plot(cs_results_groupwise_between_freq)
 }
 \references{
 Hespanhol, L., Vallio, C. S., Costa, L. M., & Saragiotto, B. T.
@@ -306,7 +194,7 @@ around effect estimates. Brazilian Journal of Physical Therapy, 23(4),
 }
 \seealso{
 Main clinical signficance functions
-\code{\link{cs_combined}()},
+\code{\link{cs_anchor_group}()},
 \code{\link{cs_distribution}()},
 \code{\link{cs_percentage}()},
 \code{\link{cs_statistical}()}
