@@ -96,23 +96,28 @@
 #'
 #' # Or adjust the axis limits by hand
 #' plot(cs_results, lower_limit = 0, upper_limit = 80)
-plot.cs_distribution <- function(x,
-                                 x_lab = NULL,
-                                 y_lab = NULL,
-                                 color_lab = "Group",
-                                 lower_limit,
-                                 upper_limit,
-                                 show,
-                                 point_alpha = 1,
-                                 trajectory_alpha = 1,
-                                 rci_fill = "grey10",
-                                 rci_alpha = 0.1,
-                                 overplotting = 0.02,
-                                 ...) {
+plot.cs_distribution <- function(
+  x,
+  x_lab = NULL,
+  y_lab = NULL,
+  color_lab = "Group",
+  lower_limit,
+  upper_limit,
+  show,
+  point_alpha = 1,
+  trajectory_alpha = 1,
+  rci_fill = "grey10",
+  rci_alpha = 0.1,
+  overplotting = 0.02,
+  ...
+) {
   # Which plot should be plotted?
   cs_method <- x[["method"]]
-  if (cs_method != "HLM") which_plot <- "point" else which_plot <- "trajectory"
-
+  if (cs_method != "HLM") {
+    which_plot <- "point"
+  } else {
+    which_plot <- "trajectory"
+  }
 
   # Get augmented data for plotting
   if (which_plot == "point") {
@@ -124,7 +129,11 @@ plot.cs_distribution <- function(x,
     model_data <- cs_get_data(x, "model")
     categories <- cs_get_augmented_data(x)
 
-    if (.has_group(model_data)) by_ids <- dplyr::join_by(c("id", "group")) else by_ids <- dplyr::join_by("id")
+    if (.has_group(model_data)) {
+      by_ids <- dplyr::join_by(c("id", "group"))
+    } else {
+      by_ids <- dplyr::join_by("id")
+    }
 
     data <- model_data |>
       dplyr::left_join(categories, by_ids) |>
@@ -133,12 +142,13 @@ plot.cs_distribution <- function(x,
       )
   }
 
-
-
-
   # If lower and upper limit are not supplied, get them based on the data
-  if (missing(lower_limit)) lower_limit <- min(data[["pre"]], data[["post"]])
-  if (missing(upper_limit)) upper_limit <- max(data[["pre"]], data[["post"]])
+  if (missing(lower_limit)) {
+    lower_limit <- min(data[["pre"]], data[["post"]])
+  }
+  if (missing(upper_limit)) {
+    upper_limit <- max(data[["pre"]], data[["post"]])
+  }
 
   # Determine x and y limits for plotting. Overplotting is needed because we
   # want the ribbon to be at the edge of the plot, thus requiring expand = FALSE
@@ -148,10 +158,14 @@ plot.cs_distribution <- function(x,
   upper_limit <- upper_limit + overplot_amount
   x_limits <- y_limits <- c(lower_limit, upper_limit)
 
-
   # Generate data for the RCI band
-  if (cs_method != "HLM") rci_data <- generate_plotting_band(x, lower_limit = lower_limit, upper_limit = upper_limit)
-
+  if (cs_method != "HLM") {
+    rci_data <- generate_plotting_band(
+      x,
+      lower_limit = lower_limit,
+      upper_limit = upper_limit
+    )
+  }
 
   # Default plot labels
   if (which_plot == "point" & is.null(x_lab) & is.null(y_lab)) {
@@ -162,35 +176,53 @@ plot.cs_distribution <- function(x,
     y_lab <- "Outcome Score"
   }
 
-
   # Create a list of geoms added to the plot
   if (cs_method != "HLM") {
     geom_list <- list(
-      ggplot2::geom_ribbon(data = rci_data, ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax), fill = rci_fill, alpha = rci_alpha),
+      ggplot2::geom_ribbon(
+        data = rci_data,
+        ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax),
+        fill = rci_fill,
+        alpha = rci_alpha
+      ),
       ggplot2::geom_abline(color = "grey10"),
       if (.has_group(data) & missing(show)) {
         ggplot2::geom_point(ggplot2::aes(color = group), alpha = point_alpha)
       } else {
-        ggplot2::geom_point(ggplot2::aes(color = {{ show }}), alpha = point_alpha)
+        ggplot2::geom_point(
+          ggplot2::aes(color = {{ show }}),
+          alpha = point_alpha
+        )
       }
     )
-  } else if (cs_method == "HLM"){
+  } else if (cs_method == "HLM") {
     geom_list_trajectory <- list(
       if (.has_group(data) & missing(show)) {
-        ggplot2::geom_line(ggplot2::aes(color = group), alpha = trajectory_alpha, na.rm = TRUE)
+        ggplot2::geom_line(
+          ggplot2::aes(color = group),
+          alpha = trajectory_alpha,
+          na.rm = TRUE
+        )
       } else {
-        ggplot2::geom_line(ggplot2::aes(color = {{ show }}), alpha = trajectory_alpha, na.rm = TRUE)
+        ggplot2::geom_line(
+          ggplot2::aes(color = {{ show }}),
+          alpha = trajectory_alpha,
+          na.rm = TRUE
+        )
       }
     )
   }
-
 
   # Plot the whole thing
   if (which_plot == "point") {
     data |>
       ggplot2::ggplot(ggplot2::aes(pre, post)) +
       geom_list +
-      ggplot2::coord_cartesian(xlim = x_limits, ylim = y_limits, expand = FALSE) +
+      ggplot2::coord_cartesian(
+        xlim = x_limits,
+        ylim = y_limits,
+        expand = FALSE
+      ) +
       ggplot2::labs(x = x_lab, y = y_lab, color = color_lab)
   } else if (which_plot == "trajectory") {
     data |>
@@ -200,8 +232,6 @@ plot.cs_distribution <- function(x,
       ggplot2::facet_wrap(ggplot2::vars(category))
   }
 }
-
-
 
 
 #' Plot an Object of Class cs_statistical
@@ -286,17 +316,19 @@ plot.cs_distribution <- function(x,
 #'
 #' # Or adjust the axis limits by hand
 #' plot(cs_results, lower_limit = 0, upper_limit = 80)
-plot.cs_statistical <- function(x,
-                                x_lab = "Pre",
-                                y_lab = "Post",
-                                color_lab = "Group",
-                                include_cutoff = TRUE,
-                                lower_limit,
-                                upper_limit,
-                                show,
-                                point_alpha = 1,
-                                overplotting = 0.02,
-                                ...) {
+plot.cs_statistical <- function(
+  x,
+  x_lab = "Pre",
+  y_lab = "Post",
+  color_lab = "Group",
+  include_cutoff = TRUE,
+  lower_limit,
+  upper_limit,
+  show,
+  point_alpha = 1,
+  overplotting = 0.02,
+  ...
+) {
   cs_method <- x[["method"]]
 
   # Get data
@@ -308,10 +340,13 @@ plot.cs_statistical <- function(x,
   # Get the cutoff
   cs_cutoff <- cs_get_cutoff(x)[["value"]]
 
-
   # If lower and upper limit are not supplied, get them based on the data
-  if (missing(lower_limit)) lower_limit <- min(data[["pre"]], data[["post"]])
-  if (missing(upper_limit)) upper_limit <- max(data[["pre"]], data[["post"]])
+  if (missing(lower_limit)) {
+    lower_limit <- min(data[["pre"]], data[["post"]])
+  }
+  if (missing(upper_limit)) {
+    upper_limit <- max(data[["pre"]], data[["post"]])
+  }
 
   # Determine x and y limits for plotting. Overplotting is needed because we
   # want the ribbon to be at the edge of the plot, thus requiring expand = FALSE
@@ -320,7 +355,6 @@ plot.cs_statistical <- function(x,
   lower_limit <- lower_limit - overplot_amount
   upper_limit <- upper_limit + overplot_amount
   x_limits <- y_limits <- c(lower_limit, upper_limit)
-
 
   # Create a list of geoms that can be added to the plot
   geom_list <- list(
@@ -334,7 +368,6 @@ plot.cs_statistical <- function(x,
     }
   )
 
-
   # Plot the whole thing
   data |>
     ggplot2::ggplot(ggplot2::aes(pre, post)) +
@@ -342,7 +375,6 @@ plot.cs_statistical <- function(x,
     ggplot2::coord_cartesian(xlim = x_limits, ylim = y_limits, expand = FALSE) +
     ggplot2::labs(x = x_lab, y = y_lab, color = color_lab)
 }
-
 
 
 #' Plot an Object of Class cs_combined
@@ -451,23 +483,28 @@ plot.cs_statistical <- function(x,
 #'
 #' # Or adjust the axis limits by hand
 #' plot(cs_results, lower_limit = 0, upper_limit = 80)
-plot.cs_combined <- function(x,
-                             x_lab = NULL,
-                             y_lab = NULL,
-                             color_lab = "Group",
-                             lower_limit,
-                             upper_limit,
-                             show,
-                             point_alpha = 1,
-                             trajectory_alpha = 1,
-                             rci_fill = "grey10",
-                             rci_alpha = 0.1,
-                             overplotting = 0.02,
-                             ...) {
+plot.cs_combined <- function(
+  x,
+  x_lab = NULL,
+  y_lab = NULL,
+  color_lab = "Group",
+  lower_limit,
+  upper_limit,
+  show,
+  point_alpha = 1,
+  trajectory_alpha = 1,
+  rci_fill = "grey10",
+  rci_alpha = 0.1,
+  overplotting = 0.02,
+  ...
+) {
   # Which plot should be plotted?
   cs_method <- x[["method"]]
-  if (cs_method != "HLM") which_plot <- "point" else which_plot <- "trajectory"
-
+  if (cs_method != "HLM") {
+    which_plot <- "point"
+  } else {
+    which_plot <- "trajectory"
+  }
 
   # Get augmented data for plotting
   if (which_plot == "point") {
@@ -479,9 +516,12 @@ plot.cs_combined <- function(x,
     model_data <- cs_get_data(x, "model")
     categories <- cs_get_augmented_data(x)
 
-
     # Join the data accordingly
-    if (.has_group(model_data)) by_ids <- dplyr::join_by(c("id", "group")) else by_ids <- dplyr::join_by("id")
+    if (.has_group(model_data)) {
+      by_ids <- dplyr::join_by(c("id", "group"))
+    } else {
+      by_ids <- dplyr::join_by("id")
+    }
 
     data <- model_data |>
       dplyr::left_join(categories, by_ids) |>
@@ -490,14 +530,16 @@ plot.cs_combined <- function(x,
       )
   }
 
-
   # Get the cutoff
   cs_cutoff <- cs_get_cutoff(x)[["value"]]
 
-
   # If lower and upper limit are not supplied, get them based on the data
-  if (missing(lower_limit)) lower_limit <- min(data[["pre"]], data[["post"]])
-  if (missing(upper_limit)) upper_limit <- max(data[["pre"]], data[["post"]])
+  if (missing(lower_limit)) {
+    lower_limit <- min(data[["pre"]], data[["post"]])
+  }
+  if (missing(upper_limit)) {
+    upper_limit <- max(data[["pre"]], data[["post"]])
+  }
 
   # Determine x and y limits for plotting. Overplotting is needed because we
   # want the ribbon to be at the edge of the plot, thus requiring expand = FALSE
@@ -507,10 +549,14 @@ plot.cs_combined <- function(x,
   upper_limit <- upper_limit + overplot_amount
   x_limits <- y_limits <- c(lower_limit, upper_limit)
 
-
   # Generate data for the RCI band
-  if (cs_method != "HLM") rci_data <- generate_plotting_band(x, lower_limit = lower_limit, upper_limit = upper_limit)
-
+  if (cs_method != "HLM") {
+    rci_data <- generate_plotting_band(
+      x,
+      lower_limit = lower_limit,
+      upper_limit = upper_limit
+    )
+  }
 
   # Default plot labels
   if (which_plot == "point" & is.null(x_lab) & is.null(y_lab)) {
@@ -521,37 +567,55 @@ plot.cs_combined <- function(x,
     y_lab <- "Outcome Score"
   }
 
-
   # Create a list of geoms added to the plot
   if (cs_method != "HLM") {
     geom_list <- list(
       ggplot2::geom_vline(xintercept = cs_cutoff, lty = "dashed"),
       ggplot2::geom_hline(yintercept = cs_cutoff, lty = "dashed"),
-      ggplot2::geom_ribbon(data = rci_data, ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax), fill = rci_fill, alpha = rci_alpha),
+      ggplot2::geom_ribbon(
+        data = rci_data,
+        ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax),
+        fill = rci_fill,
+        alpha = rci_alpha
+      ),
       ggplot2::geom_abline(color = "grey10"),
       if (.has_group(data) & missing(show)) {
         ggplot2::geom_point(ggplot2::aes(color = group), alpha = point_alpha)
       } else {
-        ggplot2::geom_point(ggplot2::aes(color = {{ show }}), alpha = point_alpha)
+        ggplot2::geom_point(
+          ggplot2::aes(color = {{ show }}),
+          alpha = point_alpha
+        )
       }
     )
-  } else if (cs_method == "HLM"){
+  } else if (cs_method == "HLM") {
     geom_list_trajectory <- list(
       if (.has_group(data) & missing(show)) {
-        ggplot2::geom_line(ggplot2::aes(color = group), alpha = trajectory_alpha, na.rm = TRUE)
+        ggplot2::geom_line(
+          ggplot2::aes(color = group),
+          alpha = trajectory_alpha,
+          na.rm = TRUE
+        )
       } else {
-        ggplot2::geom_line(ggplot2::aes(color = {{ show }}), alpha = trajectory_alpha, na.rm = TRUE)
+        ggplot2::geom_line(
+          ggplot2::aes(color = {{ show }}),
+          alpha = trajectory_alpha,
+          na.rm = TRUE
+        )
       }
     )
   }
-
 
   # Plot the whole thing
   if (which_plot == "point") {
     data |>
       ggplot2::ggplot(ggplot2::aes(pre, post)) +
       geom_list +
-      ggplot2::coord_cartesian(xlim = x_limits, ylim = y_limits, expand = FALSE) +
+      ggplot2::coord_cartesian(
+        xlim = x_limits,
+        ylim = y_limits,
+        expand = FALSE
+      ) +
       ggplot2::labs(x = x_lab, y = y_lab, color = color_lab)
   } else if (which_plot == "trajectory") {
     data |>
@@ -561,8 +625,6 @@ plot.cs_combined <- function(x,
       ggplot2::facet_wrap(ggplot2::vars(category))
   }
 }
-
-
 
 
 #' Plot an Object of Class cs_percentage
@@ -649,28 +711,33 @@ plot.cs_combined <- function(x,
 #'
 #' # Or adjust the axis limits by hand
 #' plot(cs_results, lower_limit = 0, upper_limit = 80)
-plot.cs_percentage<- function(x,
-                              x_lab = "Pre",
-                              y_lab = "Post",
-                              color_lab = "Group",
-                              lower_limit,
-                              upper_limit,
-                              show,
-                              point_alpha = 1,
-                              pct_fill = "grey10",
-                              pct_alpha = 0.1,
-                              overplotting = 0.02,
-                              ...) {
+plot.cs_percentage <- function(
+  x,
+  x_lab = "Pre",
+  y_lab = "Post",
+  color_lab = "Group",
+  lower_limit,
+  upper_limit,
+  show,
+  point_alpha = 1,
+  pct_fill = "grey10",
+  pct_alpha = 0.1,
+  overplotting = 0.02,
+  ...
+) {
   # Get augmented data for plotting
   data <- cs_get_augmented_data(x) |>
     dplyr::mutate(
       dplyr::across(dplyr::where(is.logical), \(x) ifelse(x, "Yes", "No"))
     )
 
-
   # If lower and upper limit are not supplied, get them based on the data
-  if (missing(lower_limit)) lower_limit <- min(data[["pre"]], data[["post"]])
-  if (missing(upper_limit)) upper_limit <- max(data[["pre"]], data[["post"]])
+  if (missing(lower_limit)) {
+    lower_limit <- min(data[["pre"]], data[["post"]])
+  }
+  if (missing(upper_limit)) {
+    upper_limit <- max(data[["pre"]], data[["post"]])
+  }
 
   # Determine x and y limits for plotting. Overplotting is needed because we
   # want the ribbon to be at the edge of the plot, thus requiring expand = FALSE
@@ -680,14 +747,21 @@ plot.cs_percentage<- function(x,
   upper_limit <- upper_limit + overplot_amount
   x_limits <- y_limits <- c(lower_limit, upper_limit)
 
-
   # Generate data for the RCI band
-  band_data <- generate_plotting_band(x, lower_limit = lower_limit, upper_limit = upper_limit)
-
+  band_data <- generate_plotting_band(
+    x,
+    lower_limit = lower_limit,
+    upper_limit = upper_limit
+  )
 
   # Create a list of geoms added to the plot
   geom_list <- list(
-    ggplot2::geom_ribbon(data = band_data, ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax), fill = pct_fill, alpha = pct_alpha),
+    ggplot2::geom_ribbon(
+      data = band_data,
+      ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax),
+      fill = pct_fill,
+      alpha = pct_alpha
+    ),
     ggplot2::geom_abline(color = "grey10"),
     if (.has_group(data) & missing(show)) {
       ggplot2::geom_point(ggplot2::aes(color = group), alpha = point_alpha)
@@ -695,7 +769,6 @@ plot.cs_percentage<- function(x,
       ggplot2::geom_point(ggplot2::aes(color = {{ show }}), alpha = point_alpha)
     }
   )
-
 
   # Plot the whole thing
   data |>
@@ -706,9 +779,7 @@ plot.cs_percentage<- function(x,
 }
 
 
-
-
-#' Plot an Object of Class cs_anchor_individual_within
+#' Plot an Object of Class cs_anchor_individual
 #'
 #' @description This function creates a generic clinical significance plot by
 #'   plotting the patients' pre intervention value on the x-axis and the post
@@ -792,28 +863,33 @@ plot.cs_percentage<- function(x,
 #'
 #' # Or adjust the axis limits by hand
 #' plot(cs_results, lower_limit = 0, upper_limit = 80)
-plot.cs_anchor_individual_within <- function(x,
-                                             x_lab = "Pre",
-                                             y_lab = "Post",
-                                             color_lab = "Group",
-                                             lower_limit,
-                                             upper_limit,
-                                             show,
-                                             point_alpha = 1,
-                                             mid_fill = "grey10",
-                                             mid_alpha = 0.1,
-                                             overplotting = 0.02,
-                                             ...) {
+plot.cs_anchor_individual <- function(
+  x,
+  x_lab = "Pre",
+  y_lab = "Post",
+  color_lab = "Group",
+  lower_limit,
+  upper_limit,
+  show,
+  point_alpha = 1,
+  mid_fill = "grey10",
+  mid_alpha = 0.1,
+  overplotting = 0.02,
+  ...
+) {
   # Get augmented data for plotting
   data <- cs_get_augmented_data(x) |>
     dplyr::mutate(
       dplyr::across(dplyr::where(is.logical), \(x) ifelse(x, "Yes", "No"))
     )
 
-
   # If lower and upper limit are not supplied, get them based on the data
-  if (missing(lower_limit)) lower_limit <- min(data[["pre"]], data[["post"]])
-  if (missing(upper_limit)) upper_limit <- max(data[["pre"]], data[["post"]])
+  if (missing(lower_limit)) {
+    lower_limit <- min(data[["pre"]], data[["post"]])
+  }
+  if (missing(upper_limit)) {
+    upper_limit <- max(data[["pre"]], data[["post"]])
+  }
 
   # Determine x and y limits for plotting. Overplotting is needed because we
   # want the ribbon to be at the edge of the plot, thus requiring expand = FALSE
@@ -823,14 +899,21 @@ plot.cs_anchor_individual_within <- function(x,
   upper_limit <- upper_limit + overplot_amount
   x_limits <- y_limits <- c(lower_limit, upper_limit)
 
-
   # Generate data for the RCI band
-  band_data <- generate_plotting_band(x, lower_limit = lower_limit, upper_limit = upper_limit)
-
+  band_data <- generate_plotting_band(
+    x,
+    lower_limit = lower_limit,
+    upper_limit = upper_limit
+  )
 
   # Create a list of geoms added to the plot
   geom_list <- list(
-    ggplot2::geom_ribbon(data = band_data, ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax), fill = mid_fill, alpha = mid_alpha),
+    ggplot2::geom_ribbon(
+      data = band_data,
+      ggplot2::aes(y = NULL, ymin = ymin, ymax = ymax),
+      fill = mid_fill,
+      alpha = mid_alpha
+    ),
     ggplot2::geom_abline(color = "grey10"),
     if (.has_group(data) & missing(show)) {
       ggplot2::geom_point(ggplot2::aes(color = group), alpha = point_alpha)
@@ -839,7 +922,6 @@ plot.cs_anchor_individual_within <- function(x,
     }
   )
 
-
   # Plot the whole thing
   data |>
     ggplot2::ggplot(ggplot2::aes(pre, post)) +
@@ -847,8 +929,6 @@ plot.cs_anchor_individual_within <- function(x,
     ggplot2::coord_cartesian(xlim = x_limits, ylim = y_limits, expand = FALSE) +
     ggplot2::labs(x = x_lab, y = y_lab, color = color_lab)
 }
-
-
 
 
 #' Plot an Object of Class cs_anchor_group_within
@@ -884,10 +964,12 @@ plot.cs_anchor_individual_within <- function(x,
 #'
 #' # Change the axis labels
 #' plot(cs_results, x_lab = "Condition", y_lab = "Treatment Effect")
-plot.cs_anchor_group_within <- function(x,
-                                        x_lab = "Group",
-                                        y_lab = "Mean Intervention Effect\n(with 95%-CI)",
-                                        ...) {
+plot.cs_anchor_group_within <- function(
+  x,
+  x_lab = "Group",
+  y_lab = "Mean Intervention Effect\n(with 95%-CI)",
+  ...
+) {
   # Get augmented data for plotting
   data <- x[["anchor_results"]]
   mid_improvement <- x[["mid_improvement"]]
@@ -895,15 +977,16 @@ plot.cs_anchor_group_within <- function(x,
 
   threshold <- direction * mid_improvement
 
-
   geom_list <- list(
-    ggplot2::geom_hline(yintercept =0),
+    ggplot2::geom_hline(yintercept = 0),
     ggplot2::geom_hline(yintercept = threshold, linetype = "dashed"),
     ggplot2::geom_point(shape = 15, size = 2),
-    ggplot2::geom_errorbar(ggplot2::aes(ymin = lower, ymax = upper), width = 0.2),
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = lower, ymax = upper),
+      width = 0.2
+    ),
     ggplot2::expand_limits(y = 0, x = 0:2)
   )
-
 
   if (.has_group(data)) {
     data |>
@@ -917,8 +1000,6 @@ plot.cs_anchor_group_within <- function(x,
       ggplot2::labs(x = x_lab, y = y_lab)
   }
 }
-
-
 
 
 #' Plot an Object of Class cs_anchor_group_between
@@ -956,10 +1037,12 @@ plot.cs_anchor_group_within <- function(x,
 #'
 #' # Change the axis labels
 #' plot(cs_results, x_lab = "Condition", y_lab = "Treatment Effect")
-plot.cs_anchor_group_between <- function(x,
-                                         x_lab = "Group",
-                                         y_lab = "Mean Intervention Effect\n(with 95%-CI)",
-                                         ...) {
+plot.cs_anchor_group_between <- function(
+  x,
+  x_lab = "Group",
+  y_lab = "Mean Intervention Effect\n(with 95%-CI)",
+  ...
+) {
   # Get augmented data for plotting
   data <- x[["anchor_results"]]
   mid_improvement <- x[["mid_improvement"]]
@@ -967,15 +1050,16 @@ plot.cs_anchor_group_between <- function(x,
 
   threshold <- direction * mid_improvement
 
-
   geom_list <- list(
-    ggplot2::geom_hline(yintercept =0),
+    ggplot2::geom_hline(yintercept = 0),
     ggplot2::geom_hline(yintercept = threshold, linetype = "dashed"),
     ggplot2::geom_point(shape = 15, size = 2),
-    ggplot2::geom_errorbar(ggplot2::aes(ymin = lower, ymax = upper), width = 0.2),
+    ggplot2::geom_errorbar(
+      ggplot2::aes(ymin = lower, ymax = upper),
+      width = 0.2
+    ),
     ggplot2::expand_limits(y = 0, x = 0:2)
   )
-
 
   data |>
     ggplot2::ggplot(ggplot2::aes(comparison, difference)) +

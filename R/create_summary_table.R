@@ -355,7 +355,7 @@ create_summary_table.cs_percentage <- function(x, data, ...) {
 #'
 #' @keywords internal
 #' @export
-create_summary_table.cs_anchor_individual_within <- function(x, data, ...) {
+create_summary_table.cs_anchor_individual <- function(x, data, ...) {
   # Get the percentage results as well as the used data (needed if grouped
   # results are required)
   anchor_results <- x[["data"]]

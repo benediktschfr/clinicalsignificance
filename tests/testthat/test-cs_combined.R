@@ -81,7 +81,7 @@ test_that("cs_combined: Logic Branching (Anchor vs Distribution)", {
   )
 
   expect_equal(res_anchor$method, "CWB")
-  expect_s3_class(res_anchor$datasets, "cs_anchor_individual_within")
+  expect_s3_class(res_anchor$datasets, "cs_anchor_individual")
 
   # Check, ob mid_deterioration default greift
   expect_equal(res_anchor$mid_deterioration, 5)

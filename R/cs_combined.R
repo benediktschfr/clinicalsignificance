@@ -113,7 +113,7 @@ cs_combined <- function(
   use_anchor <- !is.null(mid_improvement)
 
   if (use_anchor) {
-    class(datasets) <- c("cs_anchor_individual_within", class(datasets))
+    class(datasets) <- c("cs_anchor_individual", class(datasets))
     cs_method <- "CWB"
 
     # Defaults handling

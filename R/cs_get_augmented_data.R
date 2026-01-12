@@ -90,7 +90,9 @@ cs_get_augmented_data <- function(x, ...) {
 #' @rdname augmented_data
 #' @export
 cs_get_augmented_data.default <- function(x, ...) {
-  cli::cli_abort("Augmented data cannot be extracted for an object of class {.code {class(x)}}")
+  cli::cli_abort(
+    "Augmented data cannot be extracted for an object of class {.code {class(x)}}"
+  )
 }
 
 
@@ -110,10 +112,12 @@ cs_get_augmented_data.cs_distribution <- function(x, ...) {
         unchanged ~ "Unchanged",
         deteriorated ~ "Deteriorated"
       ),
-      category = factor(category, levels = c("Improved", "Unchanged", "Deteriorated"))
+      category = factor(
+        category,
+        levels = c("Improved", "Unchanged", "Deteriorated")
+      )
     )
 }
-
 
 
 #' Extract Augmented Data from a cs_statistical Object
@@ -125,11 +129,9 @@ cs_get_augmented_data.cs_statistical <- function(x, ...) {
   used_data <- x[["datasets"]][["data"]]
   cs_method <- x[["method"]]
 
-
   # Join data with cutoff results
   joined_data <- used_data |>
     dplyr::left_join(cutoff_categories, dplyr::join_by("id"))
-
 
   # Build categories based on cs_method
   if (cs_method != "HA") {
@@ -138,9 +140,13 @@ cs_get_augmented_data.cs_statistical <- function(x, ...) {
         category = dplyr::case_when(
           clinical_pre & functional_post ~ "Improved",
           !clinical_pre & !functional_post ~ "Deteriorated",
-          !(clinical_pre & functional_post) & !(!clinical_pre & !functional_post) ~ "Unchanged"
+          !(clinical_pre & functional_post) &
+            !(!clinical_pre & !functional_post) ~ "Unchanged"
         ),
-        category = factor(category, levels = c("Improved", "Unchanged", "Deteriorated"))
+        category = factor(
+          category,
+          levels = c("Improved", "Unchanged", "Deteriorated")
+        )
       )
   } else {
     joined_data |>
@@ -150,11 +156,13 @@ cs_get_augmented_data.cs_statistical <- function(x, ...) {
           clinical_post ~ "Deteriorated",
           !functional_post & !clinical_post ~ "Unchanged"
         ),
-        category = factor(category, levels = c("Improved", "Unchanged", "Deteriorated"))
+        category = factor(
+          category,
+          levels = c("Improved", "Unchanged", "Deteriorated")
+        )
       )
   }
 }
-
 
 
 #' Extract Augmented Data from a cs_combined Object
@@ -164,7 +172,6 @@ cs_get_augmented_data.cs_statistical <- function(x, ...) {
 cs_get_augmented_data.cs_combined <- function(x, ...) {
   cs_method <- x[["method"]]
   categories <- x[["summary_table"]][["categories"]]
-
 
   # Join used data with RCI results. This results in a data frame with one
   # participant per row and associated scores, change and RCI value as well as
@@ -179,11 +186,18 @@ cs_get_augmented_data.cs_combined <- function(x, ...) {
         deteriorated ~ "Deteriorated",
         harmed ~ "Harmed"
       ),
-      category = factor(category, levels = c("Recovered", "Improved", "Unchanged", "Deteriorated", "Harmed"))
+      category = factor(
+        category,
+        levels = c(
+          "Recovered",
+          "Improved",
+          "Unchanged",
+          "Deteriorated",
+          "Harmed"
+        )
+      )
     )
 }
-
-
 
 
 #' Extract Augmented Data from a cs_percentage Object
@@ -202,18 +216,19 @@ cs_get_augmented_data.cs_percentage <- function(x, ...) {
         unchanged ~ "Unchanged",
         deteriorated ~ "Deteriorated"
       ),
-      category = factor(category, levels = c("Improved", "Unchanged", "Deteriorated"))
+      category = factor(
+        category,
+        levels = c("Improved", "Unchanged", "Deteriorated")
+      )
     )
 }
-
-
 
 
 #' Extract Augmented Data from a cs_anchor_individual Object
 #'
 #' @rdname augmented_data
 #' @export
-cs_get_augmented_data.cs_anchor_individual_within <- function(x, ...) {
+cs_get_augmented_data.cs_anchor_individual <- function(x, ...) {
   anchor_categories <- x[["anchor_results"]][["data"]]
   used_data <- x[["datasets"]][["data"]]
 
@@ -225,6 +240,9 @@ cs_get_augmented_data.cs_anchor_individual_within <- function(x, ...) {
         unchanged ~ "Unchanged",
         deteriorated ~ "Deteriorated"
       ),
-      category = factor(category, levels = c("Improved", "Unchanged", "Deteriorated"))
+      category = factor(
+        category,
+        levels = c("Improved", "Unchanged", "Deteriorated")
+      )
     )
 }

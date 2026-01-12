@@ -48,7 +48,7 @@ calc_anchor.cs_anchor_individual <- function(
     data = out
   )
 
-  class(out) <- c("cs_anchor_individual_within", class(out))
+  class(out) <- c("cs_anchor_individual", class(out))
   out
 }
 

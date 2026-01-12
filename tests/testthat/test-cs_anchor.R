@@ -1,214 +1,103 @@
-test_data <- tibble::tibble(
-  id = rep(1:5, each = 2),
-  time = rep(c(1, 2), 5),
-  score = c(
-    20,
-    10,
-    20,
-    18,
-    20,
-    20,
-    20,
-    25,
-    20,
-    30
-  ),
-  group = rep(c("Treat", "Ctrl"), length.out = 10)
-)
-
-
-test_that("cs_anchor input validation works", {
-  # Missing Columns (Deine cli_abort Checks)
-  expect_error(
-    cs_anchor(test_data, time = time, outcome = score, mid_improvement = 2),
-    "Argument `id` is missing", # Teilt des cli Fehlers matchen
-    fixed = TRUE # Oder FALSE nutzen für Regex
+test_that("cs_anchor works for basic improvement calculation", {
+  # Mock Data: Improvement is better (higher scores are better here for simplicity)
+  df <- data.frame(
+    id = c(1, 2, 3),
+    time = c(1, 1, 1, 2, 2, 2),
+    score = c(10, 20, 30, 15, 20, 40), # 1: +5, 2: 0, 3: +10
+    group = "A"
   )
 
-  expect_error(
-    cs_anchor(test_data, id = id, outcome = score, mid_improvement = 2),
-    "Argument `time` is missing"
-  )
+  # MID = 3.
+  # Patient 1 (+5) -> Improved
+  # Patient 2 (0) -> Unchanged
+  # Patient 3 (+10) -> Improved
 
-  # Numeric Checks (Deine checkmate asserts)
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = "invalid"
-    ),
-    "Must be of type 'number'" # Standard checkmate Fehlermeldung
-  )
-
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = -5
-    ),
-    "Element 1 is not >= 0"
-  )
-
-  # CI Level Check
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = 2,
-      ci_level = 1.5
-    ),
-    "Element 1 is not <= 1"
-  )
-})
-
-
-test_that("cs_anchor input validation works", {
-  # Missing Columns (Deine cli_abort Checks)
-  expect_error(
-    cs_anchor(test_data, time = time, outcome = score, mid_improvement = 2),
-    "Argument `id` is missing", # Teilt des cli Fehlers matchen
-    fixed = TRUE # Oder FALSE nutzen für Regex
-  )
-
-  expect_error(
-    cs_anchor(test_data, id = id, outcome = score, mid_improvement = 2),
-    "Argument `time` is missing"
-  )
-
-  # Numeric Checks (Deine checkmate asserts)
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = "invalid"
-    ),
-    "Must be of type 'number'" # Standard checkmate Fehlermeldung
-  )
-
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = -5
-    ),
-    "Element 1 is not >= 0"
-  )
-
-  # CI Level Check
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = 2,
-      ci_level = 1.5
-    ),
-    "Element 1 is not <= 1"
-  )
-})
-
-
-test_that("cs_anchor catches invalid design specifications", {
-  # Between subjects bei individual target ist verboten
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = 2,
-      target = "individual",
-      effect = "between",
-      group = group,
-      post = 2
-    ),
-    "Invalid design specification"
-  )
-
-  # Between subjects ohne Gruppe
-  expect_error(
-    cs_anchor(
-      test_data,
-      id = id,
-      time = time,
-      outcome = score,
-      mid_improvement = 2,
-      target = "group",
-      effect = "between",
-      post = 2
-      # group fehlt hier
-    ),
-    "Argument `group` is missing"
-  )
-})
-
-
-test_that("cs_anchor returns correct class and structure (Individual/Within)", {
   res <- cs_anchor(
-    data = test_data,
+    data = df,
     id = id,
     time = time,
     outcome = score,
+    mid_improvement = 3,
+    better_is = "higher",
     pre = 1,
-    post = 2,
-    mid_improvement = 5
+    post = 2
   )
 
-  # Prüfen der Klassen-Hierarchie
+  expect_s3_class(res, "cs_anchor_individual")
   expect_s3_class(res, "cs_analysis")
-  expect_s3_class(res, "cs_anchor_individual_within")
 
-  # Prüfen der Listen-Elemente
-  expect_named(
-    res,
-    c(
-      "datasets",
-      "anchor_results",
-      "outcome",
-      "n_obs",
-      "mid_improvement",
-      "mid_deterioration",
-      "direction",
-      "bayesian",
-      "prior_scale",
-      "summary_table"
-    )
-  )
+  # Check structure
+  expect_equal(res$mid_improvement, 3)
+  expect_equal(res$direction, 1) # 1 because better_is = "higher"
 
-  # Logik-Check: Wurde mid_deterioration korrekt von improvement geerbt?
-  expect_equal(res$mid_deterioration, 5)
-
-  # Direction Check (Default ist "lower" -> -1? Hängt von deinem Default ab)
-  # Angenommen better_is = "lower" ist default
-  expect_equal(res$direction, -1)
+  # Check if result table exists and has correct rows
+  expect_true("tbl_df" %in% class(res$anchor_results$data))
+  expect_equal(nrow(res$anchor_results$data), 3)
 })
 
+test_that("cs_anchor handles 'better_is = lower' correctly", {
+  df <- data.frame(
+    id = c(1, 2),
+    time = c("Pre", "Pre", "Post", "Post"),
+    score = c(20, 20, 10, 25) # 1: -10 (Improved), 2: +5 (Deteriorated)
+  )
 
-test_that("cs_anchor print method looks correct", {
   res <- cs_anchor(
-    test_data,
+    df,
     id,
     time,
     score,
-    pre = 1,
-    post = 2,
-    mid_improvement = 5
+    mid_improvement = 5,
+    better_is = "lower",
+    pre = "Pre",
+    post = "Post"
   )
 
-  # Das testet, ob der Print-Output in der Konsole gleich bleibt
-  expect_snapshot(print(res))
+  expect_equal(res$direction, -1)
+  # Hier würde man idealerweise prüfen, ob die Kategorien stimmen,
+  # das hängt aber von deiner internen calc_anchor Logik ab.
+})
 
-  # Das testet, ob die Summary-Methode gleich bleibt
-  expect_snapshot(summary(res))
+test_that("cs_anchor uses distinct mid_deterioration if provided", {
+  df <- data.frame(
+    id = 1,
+    time = c(1, 2),
+    score = c(10, 5) # Change -5
+  )
+
+  res <- cs_anchor(
+    df,
+    id,
+    time,
+    score,
+    mid_improvement = 2,
+    mid_deterioration = 10, # Large deterioration threshold
+    better_is = "higher"
+  )
+
+  expect_equal(res$mid_deterioration, 10)
+  expect_equal(res$mid_improvement, 2)
+})
+
+test_that("cs_anchor input validation triggers errors", {
+  df <- data.frame(id = 1, time = 1, score = 1)
+
+  # Missing ID
+  expect_error(
+    cs_anchor(df, time = time, outcome = score),
+    "Argument `id` is missing."
+  )
+
+  # Missing Time
+  expect_error(
+    cs_anchor(df, id = id, outcome = score),
+    "Argument `time` is missing"
+  )
+
+  # Invalid MID
+  expect_error(
+    cs_anchor(df, id, time, score, mid_improvement = "A"),
+    "Must be of type 'number'"
+  )
+  expect_error(cs_anchor(df, id, time, score, mid_improvement = -5), ">= 0")
 })

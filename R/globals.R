@@ -103,7 +103,7 @@ globalVariables(unique(c(
   "clinical_post",
   # calc_percentage:
   "pct_change",
-  # create_summary_table.cs_anchor_individual_within:
+  # create_summary_table.cs_anchor_individual:
   "n",
   # create_summary_table.cs_combined:
   "n",

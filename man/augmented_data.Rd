@@ -7,7 +7,7 @@
 \alias{cs_get_augmented_data.cs_statistical}
 \alias{cs_get_augmented_data.cs_combined}
 \alias{cs_get_augmented_data.cs_percentage}
-\alias{cs_get_augmented_data.cs_anchor_individual_within}
+\alias{cs_get_augmented_data.cs_anchor_individual}
 \title{Extract Augmented Data from a cs_analysis Object}
 \usage{
 cs_get_augmented_data(x, ...)
@@ -22,7 +22,7 @@ cs_get_augmented_data(x, ...)
 
 \method{cs_get_augmented_data}{cs_percentage}(x, ...)
 
-\method{cs_get_augmented_data}{cs_anchor_individual_within}(x, ...)
+\method{cs_get_augmented_data}{cs_anchor_individual}(x, ...)
 }
 \arguments{
 \item{x}{A \code{cs_analysis} object}
