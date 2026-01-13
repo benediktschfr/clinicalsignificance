@@ -19,14 +19,13 @@ Print Method for the Anchor-Based Approach for Groups (Between)
 }
 \examples{
 cs_results <- claus_2020 |>
-  cs_anchor(
+  cs_anchor_group(
     id,
     time,
     bdi,
     post = 4,
     mid_improvement = 7,
     group = treatment,
-    target = "group",
     effect = "between"
   )
 

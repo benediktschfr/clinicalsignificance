@@ -1,3 +1,95 @@
+#' Combined Analysis of Clinical Significance
+#'
+#' @description `cs_combined()` can be used to determine the clinical
+#'   significance of intervention studies employing the combination of the
+#'   distribution-based and statistical approach. For this, it will be assumed
+#'   that the functional (non-clinical population) and patient (clinical
+#'   population) scores form two distinct distributions on a continuum.
+#'   `cs_combined()` calculates a cutoff point between these two populations as
+#'   well as a reliable change index (RCI) based on a provided instrument
+#'   reliability estimate and counts, how many of those patients that showed a
+#'   reliable change (that is likely to be not due to measurement error)
+#'   switched from the clinical to the functional population during
+#'   intervention. Several methods for calculating the cutoff and RCI are
+#'   available.
+#'
+#' @inheritSection cs_statistical Computational details
+#' @inheritSection cs_distribution Computational details
+#'
+#' @section Categories: Each individual's change can then be categorized into
+#'   the following groups:
+#' - Recovered, i.e., the individual showed a reliable change in the beneficial direction and changed from the clinical to the functional population
+#' - Improved, i.e., the individual showed a reliable change in the beneficial direction but did not change populations
+#' - Unchanged, i.e., the individual showed no reliable change
+#' - Deteriorated, i.e., the individual showed a reliable change in the disadvantageous direction but did not change populations
+#' - Harmed, i.e., the individual showed a reliable change in the disadvantageous direction and switched from the functional to the clinincal population
+#'
+#' @inheritSection cs_distribution Data preparation
+#'
+#' @inheritParams cs_distribution
+#' @inheritParams cs_statistical
+#' @inheritParams cs_anchor
+#'
+#' @family main
+#'
+#' @return An S3 object of class `cs_analysis` and `cs_combined`
+#' @export
+#'
+#' @examples
+# In this case, cutoff "a" is chosen by default
+#' cs_results <- claus_2020 |>
+#'   cs_combined(
+#'     id,
+#'     time,
+#'     bdi,
+#'     pre = 1,
+#'     post = 4,
+#'     reliability = 0.80
+#'   )
+#'
+#' cs_results
+#' summary(cs_results)
+#' plot(cs_results)
+#'
+#'
+#' # You can choose a different cutoff but must provide summary statistics for the
+#' # functional population
+#' cs_results_c <- claus_2020 |>
+#'   cs_combined(
+#'     id,
+#'     time,
+#'     bdi,
+#'     pre = 1,
+#'     post = 4,
+#'     reliability = 0.80,
+#'     m_functional = 8,
+#'     sd_functional = 8,
+#'     cutoff_type = "c"
+#'   )
+#'
+#' cs_results_c
+#' summary(cs_results_c)
+#' plot(cs_results_c)
+#'
+#'
+#' # You can group the analysis by providing a grouping variable in the data
+#' cs_results_grouped <- claus_2020 |>
+#'   cs_combined(
+#'     id,
+#'     time,
+#'     bdi,
+#'     pre = 1,
+#'     post = 4,
+#'     group = treatment,
+#'     reliability = 0.80,
+#'     m_functional = 8,
+#'     sd_functional = 8,
+#'     cutoff_type = "c"
+#'   )
+#'
+#' cs_results_grouped
+#' summary(cs_results_grouped)
+#' plot(cs_results_grouped)
 cs_combined <- function(
   data,
   id,

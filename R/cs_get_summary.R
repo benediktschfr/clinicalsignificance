@@ -32,14 +32,13 @@
 #'
 #' # Get summary table for a group level analysis
 #' anchor_results_grouped <- claus_2020 |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     id,
 #'     time,
 #'     bdi,
 #'     pre = 1,
 #'     post = 4,
 #'     mid_improvement = 8,
-#'     target = "group"
 #'   )
 #'
 #' cs_get_summary(anchor_results_grouped)

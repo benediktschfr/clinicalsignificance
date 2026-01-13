@@ -1,128 +1,80 @@
-#' Anchor-Based Analysis of Clinical Significance
+#' Anchor-Based Analysis of Clinical Significance for Individuals
 #'
-#' @description `cs_anchor()` can be used to determine the clinical significance
-#'   of intervention studies employing the anchor-based approach. For this, a
-#'   predefined minimally important difference (MID) for an instrument is known
-#'   that corresponds to an important symptom improvement for patients. The data
-#'   can then be analyzed on the individual as well as the group level to
-#'   estimate, if the change because of an intervention is clinically
-#'   significant.
+#' @description `cs_anchor()` estimates the clinical significance of
+#'   intervention studies employing the anchor-based approach at the individual
+#'   level.
 #'
-#' @section Computational details: For the individual-level analyses, the
-#'   analysis is straight forward. An MID can be specified for an improvement as
-#'   well as a deterioration (because these must not necessarily be identical)
-#'   and the function basically counts how many patients fall within the MID
-#'   range for both, improvement and deterioration, or how many patients exceed
-#'   the limits of this range in either direction. A patient may than be
-#'   categorized as:
-#'   - Improved, the patient demonstrated a change that is equal or greater then
-#'   the MID for an improvement
-#'   - Unchanged, the patient demonstrated a change that is less than both MIDs
-#'   - Deteriorated, the patient demonstrated a change that is equal or greater
-#'   then the MID for a deterioration
+#'   This approach requires a predefined Minimally Important Difference (MID) for
+#'   the used instrument, which corresponds to the smallest difference in scores
+#'   that patients perceive as beneficial. The function categorizes each
+#'   participant's change into one of three categories: improved, unchanged, or
+#'   deteriorated.
 #'
-#'   For group-level analyses, the whole sample is either treated as a single
-#'   group or is split up by grouping presented in the data. For within group
-#'   analyses, the function calculates the median change from pre to post
-#'   intervention with the associated credible interval (CI). Based on the
-#'   median change and the limits of this CI, a group change can be categorized
-#'   in 5 distinctive categories:
-#'   - Statistically not significant, the CI contains 0
-#'   - Statistically significant but not clinically relevant, the CI does not
-#'   contain 0, but the median and both CI limits are beneath the MID threshold
-#'   - Not significantly less than the threshold, the MID threshold falls within
-#'   the CI but the median is still below that threshold
-#'   - Probably clinically significant effect, the median crossed the MID
-#'   threshold but the threshold is still inside the CI
-#'   - Large clinically significant effect, the median crossed the MID threshold
-#'   and the CI does not contain the threshold
+#' @section Computational details:
+#'   The analysis compares the individual change of each participant (post -
+#'   pre) against the specified MID thresholds.
 #'
-#'   If a between group comparison is desired, a reference group can be defined
-#'   with the `reference_group` argument to which all subsequent groups are
-#'   compared. This is usually an inactive comparator such as a placebo or
-#'   wait-list control group. The difference between the pairwise compared
-#'   groups is categorized just as the within group difference above, so the
-#'   same categories apply.
+#'   A patient is categorized as:
+#'   - **Improved**: The change indicates a benefit and its absolute magnitude is
+#'   equal to or greater than `mid_improvement`.
+#'   - **Deteriorated**: The change indicates a worsening and its absolute
+#'   magnitude is equal to or greater than `mid_deterioration`.
+#'   - **Unchanged**: The absolute magnitude of change is less than both the
+#'   improvement and deterioration thresholds.
 #'
-#'   The approach can be changed to a classical frequentist framework for which
-#'   the point estimate then represents the mean difference and the CI a
-#'   confidence interval. For an extensive overview over the differences between
-#'   a Bayesian and frequentist CI, refer to Hespanhol et al. (2019).
+#'   If `mid_deterioration` is not specified, it is assumed to be equal to
+#'   `mid_improvement` (symmetrical MIDs).
 #'
 #' @inheritSection cs_distribution Data preparation
 #'
-#'
 #' @inheritParams cs_distribution
-#' @param mid_improvement Numeric, change that indicates a clinically
-#'   significant improvement
-#' @param mid_deterioration Numeric, change that indicates a clinically
-#'   significant deterioration (optional). If `mid_deterioration` is not
-#'   provided, it will be assumed to be equal to `mid_improvement`
-#'
-#' @references Hespanhol, L., Vallio, C. S., Costa, L. M., & Saragiotto, B. T.
-#'   (2019). Understanding and interpreting confidence and credible intervals
-#'   around effect estimates. Brazilian Journal of Physical Therapy, 23(4),
-#'   290–301. https://doi.org/10.1016/j.bjpt.2018.12.006
+#' @param mid_improvement Numeric, the minimal change that indicates a clinically
+#'   significant improvement.
+#' @param mid_deterioration Numeric, the minimal change that indicates a
+#'   clinically significant deterioration (optional). If `mid_deterioration` is
+#'   not provided, it will be assumed to be equal to `mid_improvement`.
 #'
 #' @family main
 #'
-#' @return An S3 object of class `cs_analysis` and `cs_anchor`
+#' @return An S3 object of class `cs_anchor_individual` and `cs_analysis`
 #' @export
 #'
 #' @examples
-#' cs_results <- antidepressants |>
-#'   cs_anchor(patient, measurement, mom_di, mid_improvement = 8)
-#'
-#' cs_results
-#' plot(cs_results)
-#'
-#' # Set argument "pre" to avoid a warning
+#' # 1. Basic analysis with a symmetric MID of 8
 #' cs_results <- antidepressants |>
 #'   cs_anchor(
-#'     patient,
-#'     measurement,
-#'     mom_di,
-#'     pre = "Before",
+#'     id = patient,
+#'     time = measurement,
+#'     outcome = mom_di,
 #'     mid_improvement = 8
 #'   )
 #'
+#' summary(cs_results)
+#' plot(cs_results)
 #'
-#' # Inlcude the MID for deterioration
-#' cs_results_with_deterioration <- antidepressants |>
+#' # 2. Analysis with distinct MIDs for improvement and deterioration
+#' #    (e.g., improvement requires 8 points, but 5 points indicate worsening)
+#' cs_results_asym <- antidepressants |>
 #'   cs_anchor(
 #'     patient,
 #'     measurement,
 #'     mom_di,
-#'     pre = "Before",
 #'     mid_improvement = 8,
 #'     mid_deterioration = 5
 #'   )
 #'
-#' cs_results_with_deterioration
-#' summary(cs_results_with_deterioration)
-#' plot(cs_results_with_deterioration)
+#' summary(cs_results_asym)
 #'
-#'
-#' # Group the results by experimental condition
-#' cs_results_grouped <- antidepressants |>
+#' # 3. If "lower" scores are better (e.g., symptom severity), use better_is
+#' #    (Default is "lower", but explicit definition is good practice)
+#' cs_results_lower <- antidepressants |>
 #'   cs_anchor(
 #'     patient,
 #'     measurement,
 #'     mom_di,
-#'     pre = "Before",
-#'     group = condition,
 #'     mid_improvement = 8,
-#'     mid_deterioration = 5
+#'     better_is = "lower"
 #'   )
-#'
-#' cs_results_grouped
-#' summary(cs_results_grouped)
-#' plot(cs_results_grouped)
-#'
-#' # The plot method always returns a ggplot2 object, so the plot may be further
-#' # modified with ggplot2 code, e.g., facetting to avoid overplotting of groups
-#' plot(cs_results_grouped) +
-#'   ggplot2::facet_wrap(~ group)
 cs_anchor <- function(
   data,
   id,
@@ -198,12 +150,11 @@ cs_anchor <- function(
     direction <- 1
   }
 
-  # Check each participant's or group change relative to MID
+  # Check each participant's change relative to MID
   anchor_results <- calc_anchor(
     data = datasets,
     mid_improvement = mid_improvement,
     mid_deterioration = mid_deterioration,
-    reference_group = reference_group,
     post = post,
     direction = direction
   )

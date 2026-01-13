@@ -22,24 +22,26 @@ knitr::opts_chunk$set(
 
 ## Introduction
 
-The anchor-based approach is one of the most intuitive methods for evaluating clinical significance. It answers a straightforward question: **"Did the patient's change on an outcome measure meet or exceed a predefined threshold for what is considered meaningful?"**
+The anchor-based approach is one of the most intuitive methods for evaluating clinical significance. It answers a straightforward question: "Did the patient's change on an outcome measure meet or exceed a predefined threshold for what is considered meaningful?"
 
-This threshold is known as the **Minimal Important Difference (MID)**. The MID is the smallest change in a score that patients perceive as beneficial. It serves as an external "anchor" to determine if an observed change is practically relevant.
+This threshold is known as the Minimal Important Difference (MID). The MID is the smallest change in a score that patients perceive as beneficial. It serves as an external "anchor" to determine if an observed change is practically relevant.
 
-This vignette will guide you through using the `cs_anchor()` function to perform both individual- and group-level analyses using this approach.
+This vignette will guide you through using the clinicalsignificance package to perform both individual- and group-level analyses using this approach. Note that the package separates these two levels of analysis into distinct functions:
+
+* `cs_anchor()` for individual-level analyses (categorizing patients).
+* `cs_anchor_group()` for group-level analyses (comparing means/medians).
 
 ```{r setup}
 library(clinicalsignificance)
 ```
 
 ## Individual-Level Analysis
-
-At the individual level, we classify each participant based on whether their change score crosses the MID.
+At the individual level, we classify each participant based on whether their change score crosses the MID. We use the `cs_anchor()` function for this purpose.
 
 ### A Basic Example
 We will use the `claus_2020` dataset, which contains data from a study on enhancing the placebo effect of antidepressants. The primary outcome was the Beck Depression Inventory (BDI-II), where lower scores indicate improvement. For the BDI-II, a change of **7 points** is often considered the MID.
 
-The `claus_2020` dataset has four measurements per patient. For a pre-post analysis, we must specify which time points to compare using the `pre` and `post` arguments.
+The `claus_2020` dataset has four measurements per patient. For a pre-post analysis, we must specify which time points to compare using the pre and post arguments.
 
 ```{r individual-basic}
 # Analyze individual change from the first to the fourth measurement
@@ -60,7 +62,6 @@ anchor_individual
 The output shows that 62.5% of patients were classified as "Improved" (their BDI-II score decreased by 7 points or more), 27.5% were "Unchanged", and 10% "Deteriorated".
 
 ### Visualizing Individual Change
-
 A clinical significance plot helps visualize these results. Each point represents a patient.
 
 * **Solid Diagonal Line**: No change (`pre` = `post`). Points below this line represent improvement for the BDI-II.
@@ -73,8 +74,7 @@ plot(anchor_individual)
 ```
 
 ### Analyzing by Group
-
-The `claus_2020` study included a Treatment as Usual (TAU) group and a Placebo-Amplification (PA) group. We can analyze the clinical significance for each group by specifying the `group` argument.
+The `claus_2020` study included a Treatment as Usual (TAU) group and a Placebo-Amplification (PA) group. We can analyze the clinical significance for each group by specifying the `group` argument. This still performs an individual-level analysis (counting improved patients), but stratifies the results by group.
 
 ```{r individual-grouped}
 anchor_grouped <- claus_2020 |> 
@@ -94,10 +94,10 @@ summary(anchor_grouped)
 # Plot results by group
 plot(anchor_grouped)
 ```
+
 The plot clearly shows that more patients in the PA group (yellow points) achieved a clinically significant improvement compared to the TAU group (blue points).
 
 ### Handling "Positive" Outcomes
-
 Some instruments measure constructs where higher scores are better (e.g., quality of life). For these, we must set `better_is = "higher"`. Let's analyze the `who` (WHO-5 Well-Being Index) outcome from the same dataset, assuming an MID of 4.
 
 ```{r positive-outcome}
@@ -114,49 +114,48 @@ anchor_positive <- claus_2020 |>
 
 plot(anchor_positive)
 ```
+
 Now, points *above* the shaded area represent clinically significant improvement.
 
 
 ## Group-Level Analysis
 
-The anchor-based approach can also be applied at the group level to determine if the *average* change for a group was clinically meaningful. `cs_anchor()` uses a Bayesian framework by default to generate a credible interval for the mean difference.
+The anchor-based approach can also be applied at the group level to determine if the average change for a group was clinically meaningful. For this, we use the `cs_anchor_group()` function.
 
-We set `target = "group"` to perform this analysis.
+By default, `cs_anchor_group()` uses a Bayesian framework to generate a credible interval for the mean difference, but frequentist approaches are also supported (via `bayesian = FALSE`).
 
 ### Within-Group Analysis
-
 First, let's assess the average change within each treatment group separately.
 
 ```{r group-within}
 anchor_group_within <- claus_2020 |> 
-  cs_anchor(
+  cs_anchor_group(
     id = id,
     time = time,
     outcome = bdi,
     pre = 1,
     post = 4,
     mid_improvement = 7,
-    target = "group",
-    group = treatment
+    group = treatment,
+    effect = "within" # This is the default
   )
 
 anchor_group_within
 ```
+
 The results indicate that the TAU group's change was not statistically significant, while the PA group showed a "Large clinically significant effect" because its entire 95% credible interval for the mean change was beyond the MID of -7.
 
 ### Between-Group Comparison
-
-Perhaps the most common use case is comparing the change in an intervention group relative to a control group. We can do this by setting `effect = "between"`. The function will calculate the difference in change scores between the groups.
+Perhaps the most common use case is comparing the change in an intervention group relative to a control group. We can do this by setting `effect = "between"`. The function will calculate the difference in outcomes between the groups at the post-measurement.
 
 ```{r group-between}
 anchor_group_between <- claus_2020 |> 
-  cs_anchor(
+  cs_anchor_group(
     id = id,
     time = time,
     outcome = bdi,
-    post = 4, # Only post is needed here, as we compare change scores
+    post = 4, # Only post is needed here for the comparison
     mid_improvement = 7,
-    target = "group",
     group = treatment,
     effect = "between"
   )
@@ -167,10 +166,9 @@ anchor_group_between
 The analysis shows a "Probably clinically significant effect" in favor of the PA group. The average difference between the groups exceeded the MID, but the MID was still within the 95% credible interval.
 
 ## Summary and Next Steps
-
 The anchor-based approach provides a highly interpretable assessment of meaningful change, but its use depends on having a well-established MID for your outcome measure.
 
-* Use `cs_anchor()` for **individual-level** analysis to classify each patient as improved, unchanged, or deteriorated.
-* Use `cs_anchor(target = "group")` for **group-level** analysis to assess if the average change was meaningful.
+* Use `cs_anchor()` for individual-level analysis to classify each patient as improved, unchanged, or deteriorated.
+* Use `cs_anchor_group()` for group-level analysis to assess if the average change or the difference between groups was meaningful.
 
 When an MID is not available, other methods are required. The next vignette explores the **distribution-based approach**, which assesses whether a change is statistically reliable and larger than what might be expected from measurement error alone.

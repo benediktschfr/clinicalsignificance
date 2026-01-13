@@ -213,6 +213,7 @@ plot(cs_results_grouped)
 Main clinical signficance functions
 \code{\link{cs_anchor}()},
 \code{\link{cs_anchor_group}()},
+\code{\link{cs_combined}()},
 \code{\link{cs_distribution}()},
 \code{\link{cs_percentage}()}
 }

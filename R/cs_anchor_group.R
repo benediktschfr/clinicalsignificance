@@ -1,37 +1,67 @@
-#' Groupwise Anchor-Based Analysis of Clinical Significance
+#' Anchor-Based Analysis of Clinical Significance for Groups
+#'
+#' @description `cs_anchor_group()` evaluates clinical significance at the group
+#'   level by comparing the magnitude of treatment effects against a Minimally
+#'   Important Difference (MID).
+#'
+#'   This function supports two study designs:
+#'   * **Within-Group**: Compares the change from pre- to post-intervention
+#'       against the MID.
+#'   * **Between-Group**: Compares the difference between two groups (e.g.,
+#'       Intervention vs. Control) at the post-measurement against the MID.
+#'
+#'   The analysis can be performed using either a Bayesian (default) or a
+#'   Frequentist framework.
+#'
+#' @section Computational details:
+#'   For group-level analyses, the function calculates the effect size (mean or
+#'   median difference) and its associated uncertainty interval (Confidence
+#'   Interval, CI, or Credible Interval, CrI). The clinical significance is
+#'   determined by the position of this interval relative to the MID threshold.
+#'
+#'   **Categories of Clinical Significance:**
+#'   Based on the relation between the CI/CrI and the MID, the effect is
+#'   classified into one of 5 categories:
+#'   - **Statistically not significant**: The CI contains 0.
+#'   - **Statistically significant but not clinically relevant**: The CI does
+#'   not contain 0, but the entire interval is below the MID threshold.
+#'   - **Not significantly less than the threshold**: The point estimate is
+#'   below the MID, but the CI overlaps with the MID threshold.
+#'   - **Probably clinically significant effect**: The point estimate exceeds
+#'   the MID, but the lower limit of the CI is still below the MID.
+#'   - **Large clinically significant effect**: The entire CI exceeds the MID
+#'   threshold.
+#'
+#'   **Bayesian vs. Frequentist:**
+#'   - If `bayesian = TRUE` (default), the median difference and a Credible
+#'   Interval are calculated. The prior can be adjusted using `prior_scale`.
+#'   - If `bayesian = FALSE`, a frequentist mean difference and Confidence
+#'   Interval (t-distribution) are used.
+#'
+#' @inheritSection cs_distribution Data preparation
 #'
 #' @inheritParams cs_distribution
 #' @param mid_improvement Numeric, change that indicates a clinically
-#'   significant improvement
+#'   significant improvement.
 #' @param mid_deterioration Numeric, change that indicates a clinically
-#'   significant deterioration (optional). If `mid_deterioration` is not
-#'   provided, it will be assumed to be equal to `mid_improvement`
-#' @param target String, whether an individual or group analysis should be
-#'   calculated. Available are
-#'   - `"individual"` (the default) for which every individual participant is
-#'   evaluated
-#'   - `"group"` for which only the group wise effect is evaluated
-#' @param effect String, if `target = "group"`, specify which effect should be
-#'   calculated. Available are
-#'   - `"within"` (the default), which yields the mean pre-post intervention
-#'   difference with associated confidence intervals
-#'   - `"between"`, which estimates the group wise mean difference and
-#'   confidence intervals between two or more groups specified with the `group`
-#'   argument at the specified measurement supplied with the `post`- argument
-#'   The reference group may be supplied with `reference_group`
-#' @param bayesian Logical, only relevant if `target = "group"`. Indicates if a
-#'   Bayesian estimate (i.e., the median) of group differences with a credible
-#'   interval should be calculated (if set to `TRUE`, the default) or a
-#'   frequentist mean difference with confidence interval (if set to `FALSE`)
-#' @param prior_scale String or numeric, can be adjusted to change the Bayesian
-#'   prior distribution. See the documentation for `rscale` in
-#'   [BayesFactor::ttestBF()] for details.
-#' @param reference_group Specify the reference group to which all subsequent
-#'   groups are compared against if `target = "group"` and `effect = "within"`
-#'   (optional). Otherwise, the first distinct group is chosen based on
-#'   alphabetical, numerical or factor ordering.
-#' @param ci_level Numeric, define the credible or confidence interval level.
-#'   The default is 0.95 for a 95%-CI.
+#'   significant deterioration (optional). Mostly relevant for individual
+#'   analyses, but kept for consistency.
+#' @param effect String, specifies the design of the group comparison. Available are:
+#'   - `"within"` (the default): Calculates the mean/median pre-post change
+#'   within a group.
+#'   - `"between"`: Calculates the mean/median difference between two groups at
+#'   the `post` measurement. Requires the `group` argument.
+#' @param bayesian Logical. If `TRUE` (default), calculates a Bayesian estimate
+#'   (median) with a Credible Interval. If `FALSE`, calculates a Frequentist
+#'   mean difference with a Confidence Interval.
+#' @param prior_scale String or numeric, scales the Cauchy prior distribution
+#'   for the Bayesian analysis. See `rscale` in [BayesFactor::ttestBF()] for
+#'   details. Default is `"medium"`.
+#' @param reference_group String, specifies the reference group for
+#'   between-group comparisons (e.g., "Control" or "Placebo"). If not provided,
+#'   the first level of the grouping factor is used.
+#' @param ci_level Numeric, the confidence or credible interval level (e.g.,
+#'   0.95 for 95%).
 #'
 #' @references Hespanhol, L., Vallio, C. S., Costa, L. M., & Saragiotto, B. T.
 #'   (2019). Understanding and interpreting confidence and credible intervals
@@ -40,8 +70,55 @@
 #'
 #' @family main
 #'
-#' @return An S3 object of class `cs_analysis` and `cs_anchor`
+#' @return An S3 object of class `cs_anchor_group_within` or
+#'   `cs_anchor_group_between`.
 #' @export
+#'
+#' @examples
+#' # 1. Within-Group Analysis (Bayesian Default)
+#' #    Does the intervention group improve more than the MID of 8?
+#' cs_results_within <- antidepressants |>
+#'   cs_anchor_group(
+#'     patient,
+#'     measurement,
+#'     mom_di,
+#'     mid_improvement = 8,
+#'     pre = "Before",
+#'     post = "After"
+#'   )
+#'
+#' summary(cs_results_within)
+#' plot(cs_results_within)
+#'
+#'
+#' # 2. Between-Group Analysis
+#' #    Compare Intervention vs. Control at post-measurement
+#' cs_results_between <- antidepressants |>
+#'   cs_anchor_group(
+#'     patient,
+#'     measurement,
+#'     mom_di,
+#'     group = condition,
+#'     effect = "between",
+#'     post = "After",
+#'     mid_improvement = 8
+#'   )
+#'
+#' summary(cs_results_between)
+#' plot(cs_results_between)
+#'
+#'
+#' # 3. Frequentist Analysis (Standard t-test based CI)
+#' cs_results_freq <- antidepressants |>
+#'   cs_anchor_group(
+#'     patient,
+#'     measurement,
+#'     mom_di,
+#'     mid_improvement = 8,
+#'     pre = "Before",
+#'     post = "After",
+#'     bayesian = FALSE
+#'   )
 cs_anchor_group <- function(
   data,
   id,
@@ -199,14 +276,13 @@ cs_anchor_group <- function(
 #'
 #' @examples
 #' cs_results <- claus_2020 |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     id,
 #'     time,
 #'     bdi,
 #'     pre = 1,
 #'     post = 4,
 #'     mid_improvement = 7,
-#'     target = "group"
 #'   )
 #'
 #' cs_results
@@ -274,14 +350,13 @@ print.cs_anchor_group_within <- function(x, ...) {
 #'
 #' @examples
 #' cs_results <- claus_2020 |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     id,
 #'     time,
 #'     bdi,
 #'     post = 4,
 #'     mid_improvement = 7,
 #'     group = treatment,
-#'     target = "group",
 #'     effect = "between"
 #'   )
 #'
@@ -347,14 +422,13 @@ print.cs_anchor_group_between <- function(x, ...) {
 #'
 #' @examples
 #' cs_results <- claus_2020 |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     id,
 #'     time,
 #'     bdi,
 #'     pre = 1,
 #'     post = 4,
-#'     mid_improvement = 8,
-#'     target = "group"
+#'     mid_improvement = 7,
 #'   )
 #'
 #' summary(cs_results)
@@ -422,13 +496,12 @@ summary.cs_anchor_group_within <- function(object, ...) {
 #'
 #' @examples
 #' cs_results <- antidepressants |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     patient,
 #'     measurement,
 #'     post = "After",
 #'     mom_di,
-#'     mid_improvement = 8,
-#'     target = "group",
+#'     mid_improvement = 7,
 #'     effect = "between",
 #'     group = condition
 #'   )

@@ -19,14 +19,13 @@ Print Method for the Anchor-Based Approach for Groups (Within)
 }
 \examples{
 cs_results <- claus_2020 |>
-  cs_anchor(
+  cs_anchor_group(
     id,
     time,
     bdi,
     pre = 1,
     post = 4,
     mid_improvement = 7,
-    target = "group"
   )
 
 cs_results

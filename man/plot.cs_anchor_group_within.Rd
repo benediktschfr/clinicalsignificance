@@ -30,12 +30,13 @@ uncertainty interval around the estimated change on the y-axis.
 }
 \examples{
 cs_results <- antidepressants |>
-  cs_anchor(
+  cs_anchor_group(
     patient,
     measurement,
     mom_di,
     mid_improvement = 8,
-    target = "group",
+    pre = "Before",
+    post = "After",
     group = condition
   )
 

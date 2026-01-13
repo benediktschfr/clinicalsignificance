@@ -948,12 +948,13 @@ plot.cs_anchor_individual <- function(
 #'
 #' @examples
 #' cs_results <- antidepressants |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     patient,
 #'     measurement,
 #'     mom_di,
 #'     mid_improvement = 8,
-#'     target = "group",
+#'     pre = "Before",
+#'     post = "After",
 #'     group = condition
 #'   )
 #'
@@ -1019,12 +1020,11 @@ plot.cs_anchor_group_within <- function(
 #'
 #' @examples
 #' cs_results <- antidepressants |>
-#'   cs_anchor(
+#'   cs_anchor_group(
 #'     patient,
 #'     measurement,
 #'     mom_di,
 #'     mid_improvement = 8,
-#'     target = "group",
 #'     group = condition,
 #'     effect = "between",
 #'     post = "After"

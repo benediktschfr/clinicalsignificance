@@ -19,13 +19,12 @@ Summary Method for the Anchor-Based Approach for Groups (Between)
 }
 \examples{
 cs_results <- antidepressants |>
-  cs_anchor(
+  cs_anchor_group(
     patient,
     measurement,
     post = "After",
     mom_di,
-    mid_improvement = 8,
-    target = "group",
+    mid_improvement = 7,
     effect = "between",
     group = condition
   )
