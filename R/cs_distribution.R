@@ -590,9 +590,9 @@ summary.cs_distribution_sensitivity <- function(object, ...) {
   } else {
     additional_info <- list(
       Reliability = paste0(
-        dplyr::first(object[["reliability"]]),
+        min(object[["reliability"]]),
         " to ",
-        dplyr::last(object[["reliability"]])
+        max(object[["reliability"]])
       )
     )
   }
