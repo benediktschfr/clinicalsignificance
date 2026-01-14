@@ -274,6 +274,12 @@ cs_distribution <- function(
   # Prepend a class
   class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
 
+  # Count participants
+  n_obs <- list(
+    n_original = nrow(datasets[["wide"]]),
+    n_used = nrow(datasets[["data"]])
+  )
+
   if (length(reliability) > 1) {
     # >>> SENSITIVITÄTSANALYSE <<<
 
@@ -323,17 +329,18 @@ cs_distribution <- function(
       reliability_post = reliability_post,
       method = cs_method,
       better_is = better_is[[1]],
+      n_obs = n_obs,
       significance_level = significance_level,
       outcome = deparse(substitute(outcome))
     )
-    class(output) <- c("cs_distribution_sensitivity", "list")
+    class(output) <- c("cs_analysis", "cs_distribution_sensitivity", "list")
     output
   } else {
-    .core_distribution(
+    res <- .core_distribution(
       datasets = datasets,
       reliability = reliability,
       reliability_post = reliability_post,
-      method = cs_method,
+      cs_method = cs_method,
       better_is = better_is[[1]],
       significance_level = significance_level,
       outcome = deparse(substitute(outcome))
@@ -350,12 +357,6 @@ cs_distribution <- function(
   significance_level,
   outcome
 ) {
-  # Count participants
-  n_obs <- list(
-    n_original = nrow(datasets[["wide"]]),
-    n_used = nrow(datasets[["data"]])
-  )
-
   # Summary Stats (Pre ist immer nötig)
   m_pre <- mean(datasets[["data"]][["pre"]], na.rm = TRUE)
   sd_pre <- stats::sd(datasets[["data"]][["pre"]], na.rm = TRUE)
@@ -406,7 +407,6 @@ cs_distribution <- function(
     datasets = datasets,
     rci_results = rci_results,
     outcome = deparse(substitute(outcome)),
-    n_obs = n_obs,
     method = cs_method,
     reliability = reliability,
     critical_value = critical_value,
@@ -524,6 +524,67 @@ summary.cs_distribution <- function(object, ...) {
   } else {
     additional_info <- list(
       Reliability = cs_get_reliability(object)[[1]]
+    )
+  }
+
+  model_info <- .format_model_info_string(c(model_info, additional_info))
+
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
+
+#' Summary Method for the Distribution-Based Approach Sensitivity
+#'
+#' @param object An object of class `cs_distribution_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects only
+#' @export
+#'
+#' @examples
+#' cs_results <- claus_2020 |>
+#'   cs_distribution(
+#'     id, time, bdi, reliability = seq(0.5, 0.9, by = 0.1), pre = 1, post = 4
+#'   )
+#'
+#' summary(cs_results)
+summary.cs_distribution_sensitivity <- function(object, ...) {
+  # browser()
+  # Get necessary information from object
+  summary_table <- .format_summary_table(object[["summary_table"]])
+  n_original <- cs_get_n(object, "original")[[1]]
+  n_used <- cs_get_n(object, "used")[[1]]
+  rci_method <- object[["method"]]
+
+  model_info <- list(
+    Approach = "Distribution-based Sensitivity",
+    "RCI Method" = rci_method,
+    "N (original)" = n_original,
+    "N (used)" = n_used,
+    "Percent used" = insight::format_percent(
+      n_used / n_original
+    ),
+    Outcome = object[["outcome"]]
+  )
+
+  if (rci_method == "HLM") {
+    additional_info <- list(
+      Reliability = "----"
+    )
+  } else if (rci_method == "NK") {
+    additional_info <- list(
+      "Realiability Pre" = cs_get_reliability(object)[[1]],
+      "Reliability Post" = cs_get_reliability(object)[[2]]
+    )
+  } else {
+    additional_info <- list(
+      Reliability = paste0(
+        dplyr::first(object[["reliability"]]),
+        " to ",
+        dplyr::last(object[["reliability"]])
+      )
     )
   }
 
