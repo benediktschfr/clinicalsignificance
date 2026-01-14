@@ -274,12 +274,6 @@ cs_distribution <- function(
   # Prepend a class
   class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
 
-  # Count participants
-  n_obs <- list(
-    n_original = nrow(datasets[["wide"]]),
-    n_used = nrow(datasets[["data"]])
-  )
-
   if (length(reliability) > 1) {
     # >>> SENSITIVITÄTSANALYSE <<<
 
@@ -297,34 +291,42 @@ cs_distribution <- function(
     }
 
     # Loop over reliabilities
-    results_list <- purrr::map2(
-      reliability,
-      if (is.null(reliability_post)) NA else reliability_post,
-      function(r, r_post) {
-        # Core aufrufen
-        # Bei map2 mit NA für r_post aufpassen: NULL übergeben wenn nötig
-        use_post <- if (is.na(r_post)) NULL else r_post
+    results_list <- reliability |>
+      tibble::as_tibble_col("reliability") |>
+      dplyr::mutate(
+        models = purrr::map2(
+          reliability,
+          if (is.null(reliability_post)) NA else reliability_post,
+          function(r, r_post) {
+            # Core aufrufen
+            # Bei map2 mit NA für r_post aufpassen: NULL übergeben wenn nötig
+            use_post <- if (is.na(r_post)) NULL else r_post
 
-        res <- .core_distribution(
-          datasets = datasets,
-          reliability = r,
-          reliability_post = use_post,
-          cs_method = cs_method,
-          better_is = better_is,
-          significance_level = significance_level,
-          outcome = deparse(substitute(outcome))
+            .core_distribution(
+              datasets = datasets,
+              reliability = r,
+              reliability_post = use_post,
+              cs_method = cs_method,
+              better_is = better_is,
+              significance_level = significance_level,
+              outcome = deparse(substitute(outcome))
+            )
+          }
         )
+      )
 
-        res$summary_table |>
-          dplyr::mutate(reliability_used = r)
-      }
-    )
+    combined_tables <- results_list |>
+      dplyr::mutate(tables = purrr::map(models, cs_get_summary)) |>
+      dplyr::select(-models) |>
+      tidyr::unnest(tables)
 
-    combined_results <- dplyr::bind_rows(results_list)
+    n_obs <- results_list |>
+      purrr::pluck("models", 1) |>
+      purrr::pluck("n_obs")
 
     # Output Objekt bauen
     output <- list(
-      summary_table = combined_results,
+      summary_table = combined_tables,
       reliability = reliability,
       reliability_post = reliability_post,
       method = cs_method,
@@ -336,7 +338,7 @@ cs_distribution <- function(
     class(output) <- c("cs_analysis", "cs_distribution_sensitivity", "list")
     output
   } else {
-    res <- .core_distribution(
+    .core_distribution(
       datasets = datasets,
       reliability = reliability,
       reliability_post = reliability_post,
@@ -357,6 +359,12 @@ cs_distribution <- function(
   significance_level,
   outcome
 ) {
+  # Count participants
+  n_obs <- list(
+    n_original = nrow(datasets[["wide"]]),
+    n_used = nrow(datasets[["data"]])
+  )
+
   # Summary Stats (Pre ist immer nötig)
   m_pre <- mean(datasets[["data"]][["pre"]], na.rm = TRUE)
   sd_pre <- stats::sd(datasets[["data"]][["pre"]], na.rm = TRUE)
@@ -408,6 +416,7 @@ cs_distribution <- function(
     rci_results = rci_results,
     outcome = deparse(substitute(outcome)),
     method = cs_method,
+    n_obs = n_obs,
     reliability = reliability,
     critical_value = critical_value,
     summary_table = summary_table
