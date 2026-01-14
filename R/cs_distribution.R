@@ -221,33 +221,42 @@ cs_distribution <- function(
     finite = TRUE
   )
 
-  checkmate::assert_number(
+  # Check Reliability (Allow vector for sensitivity!)
+  checkmate::assert_numeric(
     reliability,
     lower = 0,
     upper = 1,
-    finite = TRUE,
-    null.ok = TRUE
-  )
-  checkmate::assert_number(
-    reliability_post,
-    lower = 0,
-    upper = 1,
-    finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
 
-  if (cs_method != "HLM" && is.null(reliability)) {
-    cli::cli_abort(
-      "Argument {.arg reliability} is required for method {.val {cs_method}}."
-    )
+  # HLM braucht keine Reliability, daher Abbruch der Sensitivitätsprüfung
+  if (cs_method == "HLM") {
+    if (!is.null(reliability)) {
+      cli::cli_alert_info(
+        "Method {.val HLM} does not use reliability. Argument ignored."
+      )
+    }
+    # Setze auf NULL für den Core-Aufruf
+    reliability <- NULL
+  } else {
+    if (is.null(reliability)) {
+      cli::cli_abort(
+        "Argument {.arg reliability} is required for method {.val {cs_method}}."
+      )
+    }
   }
 
-  if (cs_method == "NK" && is.null(reliability_post)) {
-    reliability_post <- reliability
-    cli::cli_alert_info(c(
-      "The NK method requires reliability estimates for both pre and post measurement.",
-      "i" = "Argument {.arg reliability_post} was not supplied, so {.arg reliability} ({reliability}) is used for both."
-    ))
+  # Special Case NK Method: reliability_post handling
+  if (cs_method == "NK") {
+    # Hier müsste man entscheiden: Variiert man auch reliability_post?
+    # Fürs Erste: Wenn post NULL, nimm pre (auch wenn pre ein Vektor ist).
+    if (is.null(reliability_post)) {
+      reliability_post <- reliability
+      cli::cli_alert_info(
+        "Using {.arg reliability} for {.arg reliability_post} as well."
+      )
+    }
   }
 
   # Prepare the data
@@ -265,6 +274,82 @@ cs_distribution <- function(
   # Prepend a class
   class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
 
+  if (length(reliability) > 1) {
+    # >>> SENSITIVITÄTSANALYSE <<<
+
+    # Check: NK Method mit Vektoren ist komplex.
+    # Wenn reliability ein Vektor ist und post auch, müssen sie gleich lang sein.
+    if (cs_method == "NK" && length(reliability_post) > 1) {
+      if (length(reliability) != length(reliability_post)) {
+        cli::cli_abort(
+          "Lengths of {.arg reliability} and {.arg reliability_post} must match."
+        )
+      }
+    } else if (cs_method == "NK" && length(reliability_post) == 1) {
+      # Recycle reliability_post if scalar
+      reliability_post <- rep(reliability_post, length(reliability))
+    }
+
+    # Loop over reliabilities
+    results_list <- purrr::map2(
+      reliability,
+      if (is.null(reliability_post)) NA else reliability_post,
+      function(r, r_post) {
+        # Core aufrufen
+        # Bei map2 mit NA für r_post aufpassen: NULL übergeben wenn nötig
+        use_post <- if (is.na(r_post)) NULL else r_post
+
+        res <- .core_distribution(
+          datasets = datasets,
+          reliability = r,
+          reliability_post = use_post,
+          cs_method = cs_method,
+          better_is = better_is,
+          significance_level = significance_level,
+          outcome = deparse(substitute(outcome))
+        )
+
+        res$summary_table |>
+          dplyr::mutate(reliability_used = r)
+      }
+    )
+
+    combined_results <- dplyr::bind_rows(results_list)
+
+    # Output Objekt bauen
+    output <- list(
+      summary_table = combined_results,
+      reliability = reliability,
+      reliability_post = reliability_post,
+      method = cs_method,
+      better_is = better_is[[1]],
+      significance_level = significance_level,
+      outcome = deparse(substitute(outcome))
+    )
+    class(output) <- c("cs_distribution_sensitivity", "list")
+    output
+  } else {
+    .core_distribution(
+      datasets = datasets,
+      reliability = reliability,
+      reliability_post = reliability_post,
+      method = cs_method,
+      better_is = better_is[[1]],
+      significance_level = significance_level,
+      outcome = deparse(substitute(outcome))
+    )
+  }
+}
+
+.core_distribution <- function(
+  datasets,
+  reliability,
+  reliability_post,
+  cs_method,
+  better_is,
+  significance_level,
+  outcome
+) {
   # Count participants
   n_obs <- list(
     n_original = nrow(datasets[["wide"]]),
@@ -335,6 +420,7 @@ cs_distribution <- function(
     class(datasets),
     class(output)
   )
+
   output
 }
 
@@ -356,6 +442,30 @@ print.cs_distribution <- function(x, ...) {
   model_info <- .format_model_info_string(
     list(
       Approach = "Distribution-based",
+      "RCI Method" = x[["method"]]
+    )
+  )
+
+  summary_table <- .format_summary_table(x[["summary_table"]])
+
+  # Print output
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
+
+#' Print Method for the Distribution-Based Approach
+#'
+#' @param x An object of class `cs_distribution_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects
+#' @export
+print.cs_distribution_sensitivity <- function(x, ...) {
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Distribution-based Sensitivity",
       "RCI Method" = x[["method"]]
     )
   )
