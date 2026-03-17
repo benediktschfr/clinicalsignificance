@@ -2,9 +2,12 @@
 % Please edit documentation in R/cs_statistical.R
 \name{cs_statistical}
 \alias{cs_statistical}
+\alias{cs_statistical.default}
 \title{Statistical Analysis of Clinical Significance}
 \usage{
-cs_statistical(
+cs_statistical(data, ...)
+
+\method{cs_statistical}{default}(
   data,
   id,
   time,
@@ -18,11 +21,14 @@ cs_statistical(
   better_is = c("lower", "higher"),
   cutoff_method = c("JT", "HA"),
   cutoff_type = c("a", "b", "c"),
-  significance_level = 0.05
+  significance_level = 0.05,
+  ...
 )
 }
 \arguments{
 \item{data}{A tidy data frame}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{id}{Participant ID}
 
@@ -81,6 +87,11 @@ populations and counts, how many patients changed from the clinical to the
 functional population during intervention. Several methods for calculating
 this cutoff are available.
 }
+\section{Methods (by class)}{
+\itemize{
+\item \code{cs_statistical(default)}: Default method for data frames
+
+}}
 \section{Computational details}{
  There are three available cutoff types, namely
 a, b, and c which can be used to "draw a line" or separate the functional
@@ -205,8 +216,8 @@ plot(cs_results_grouped)
 }
 \references{
 \itemize{
-\item Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12–19. https://doi.org/10.1037//0022-006X.59.1.12
-\item Hageman, W. J., & Arrindell, W. A. (1999). Establishing clinically significant change: increment of precision and the distinction between individual and group level analysis. Behaviour Research and Therapy, 37(12), 1169–1193. https://doi.org/10.1016/S0005-7967(99)00032-7
+\item Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12–19. https://doi.org/10.1037//0022-006X.59.1.12
+\item Hageman, W. J., & Arrindell, W. A. (1999). Establishing clinically significant change: increment of precision and the distinction between individual and group level analysis. Behaviour Research and Therapy, 37(12), 1169–1193. https://doi.org/10.1016/S0005-7967(99)00032-7
 }
 }
 \seealso{

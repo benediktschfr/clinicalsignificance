@@ -7,7 +7,7 @@
 \method{print}{cs_statistical}(x, ...)
 }
 \arguments{
-\item{x}{An object of class \code{cs_distribution}}
+\item{x}{An object of class \code{cs_statistical}}
 
 \item{...}{Additional arguments}
 }

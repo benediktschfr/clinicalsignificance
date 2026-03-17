@@ -7,7 +7,7 @@
 \method{summary}{cs_statistical}(object, ...)
 }
 \arguments{
-\item{object}{An object of class \code{cs_distribution}}
+\item{object}{An object of class \code{cs_statistical}}
 
 \item{...}{Additional arguments}
 }

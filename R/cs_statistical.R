@@ -47,11 +47,11 @@
 #'  Defaults to `"a"` but `"c"` is usually recommended. For `"b"` and `"c"`,
 #'  summary data from a functional population must be given with arguments
 #'  `m_functional` and `sd_functional`.
-#'
+#'@param ... Additional arguments passed to methods.
 #'
 #'@references
-#'  - Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12–19. https://doi.org/10.1037//0022-006X.59.1.12
-#'  - Hageman, W. J., & Arrindell, W. A. (1999). Establishing clinically significant change: increment of precision and the distinction between individual and group level analysis. Behaviour Research and Therapy, 37(12), 1169–1193. https://doi.org/10.1016/S0005-7967(99)00032-7
+#'  - Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12–19. https://doi.org/10.1037//0022-006X.59.1.12
+#'  - Hageman, W. J., & Arrindell, W. A. (1999). Establishing clinically significant change: increment of precision and the distinction between individual and group level analysis. Behaviour Research and Therapy, 37(12), 1169–1193. https://doi.org/10.1016/S0005-7967(99)00032-7
 #'
 #'@family main
 #'
@@ -124,7 +124,13 @@
 #' cs_results_grouped
 #' summary(cs_results_grouped)
 #' plot(cs_results_grouped)
-cs_statistical <- function(
+cs_statistical <- function(data, ...) {
+  UseMethod("cs_statistical")
+}
+
+#' @export
+#' @describeIn cs_statistical Default method for data frames
+cs_statistical.default <- function(
   data,
   id,
   time,
@@ -138,7 +144,8 @@ cs_statistical <- function(
   better_is = c("lower", "higher"),
   cutoff_method = c("JT", "HA"),
   cutoff_type = c("a", "b", "c"),
-  significance_level = 0.05
+  significance_level = 0.05,
+  ...
 ) {
   cs_method <- rlang::arg_match(cutoff_method)
   cut_type <- rlang::arg_match(cutoff_type)
@@ -168,20 +175,27 @@ cs_statistical <- function(
     finite = TRUE
   )
 
-  # Optionale Parameter checken (dürfen NULL sein, aber WENN da, dann korrekt)
-  checkmate::assert_number(m_functional, finite = TRUE, null.ok = TRUE)
-  checkmate::assert_number(
+  # Optionale Parameter checken (dürfen Vektoren sein für Sensitivität)
+  checkmate::assert_numeric(
+    m_functional,
+    finite = TRUE,
+    null.ok = TRUE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(
     sd_functional,
     lower = 0,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
-  checkmate::assert_number(
+  checkmate::assert_numeric(
     reliability,
     lower = 0,
     upper = 1,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
 
   # Fall: Hageman & Arrindell (HA) braucht Reliability
@@ -196,6 +210,7 @@ cs_statistical <- function(
     cli::cli_alert_info(
       "Argument {.arg reliability} is not used for the JT approach and will be ignored."
     )
+    reliability <- NULL
   }
 
   # Fall: Cutoff b oder c braucht funktionale Populationsdaten
@@ -208,8 +223,6 @@ cs_statistical <- function(
       ))
     }
   }
-
-  # --- Ab hier: Datenvorbereitung & Berechnung ---
 
   # Prepare the data
   datasets <- .prep_data(
@@ -226,6 +239,95 @@ cs_statistical <- function(
   # Prepend a class
   class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
 
+  # Get direction and outcome name safely
+  direction <- if (better_is[1] == "lower") -1 else 1
+  outcome_name <- deparse(substitute(outcome))
+
+  is_sensitivity <- length(m_functional) > 1 ||
+    length(sd_functional) > 1 ||
+    length(reliability) > 1
+
+  # >>> SENSITIVITÄTSANALYSE ODER STANDARD <<<
+  if (is_sensitivity) {
+    # NULL in NA_real_ umwandeln, damit expand_grid funktioniert
+    m_func_vec <- if (is.null(m_functional)) NA_real_ else m_functional
+    sd_func_vec <- if (is.null(sd_functional)) NA_real_ else sd_functional
+    rel_vec <- if (is.null(reliability)) NA_real_ else reliability
+
+    # Erstelle ein Grid aus allen Kombinationen der Eingabeparameter
+    results_list <- tidyr::expand_grid(
+      m_functional = m_func_vec,
+      sd_functional = sd_func_vec,
+      reliability = rel_vec
+    ) |>
+      dplyr::mutate(
+        models = purrr::pmap(
+          list(m_functional, sd_functional, reliability),
+          function(m, sd, rel) {
+            .core_statistical(
+              datasets = datasets,
+              m_functional = if (is.na(m)) NULL else m,
+              sd_functional = if (is.na(sd)) NULL else sd,
+              reliability = if (is.na(rel)) NULL else rel,
+              cs_method = cs_method,
+              cut_type = cut_type,
+              direction = direction,
+              significance_level = significance_level,
+              outcome = outcome_name
+            )
+          }
+        )
+      )
+
+    combined_tables <- results_list |>
+      dplyr::mutate(tables = purrr::map(models, cs_get_summary)) |>
+      dplyr::select(-models) |>
+      tidyr::unnest(tables)
+
+    n_obs <- results_list |>
+      purrr::pluck("models", 1) |>
+      purrr::pluck("n_obs")
+
+    output <- list(
+      summary_table = combined_tables,
+      m_functional = m_functional,
+      sd_functional = sd_functional,
+      reliability = reliability,
+      method = cs_method,
+      cutoff_type = cut_type,
+      better_is = better_is[[1]],
+      n_obs = n_obs,
+      significance_level = significance_level,
+      outcome = outcome_name
+    )
+    class(output) <- c("cs_analysis", "cs_statistical_sensitivity", "list")
+    return(output)
+  } else {
+    return(.core_statistical(
+      datasets = datasets,
+      m_functional = m_functional,
+      sd_functional = sd_functional,
+      reliability = reliability,
+      cs_method = cs_method,
+      cut_type = cut_type,
+      direction = direction,
+      significance_level = significance_level,
+      outcome = outcome_name
+    ))
+  }
+}
+
+.core_statistical <- function(
+  datasets,
+  m_functional,
+  sd_functional,
+  reliability,
+  cs_method,
+  cut_type,
+  direction,
+  significance_level,
+  outcome
+) {
   # Count participants
   n_obs <- list(
     n_original = nrow(datasets[["wide"]]),
@@ -236,22 +338,15 @@ cs_statistical <- function(
   m_pre <- mean(datasets[["data"]][["pre"]], na.rm = TRUE)
   sd_pre <- stats::sd(datasets[["data"]][["pre"]], na.rm = TRUE)
 
-  # Initialisierung (Safety, falls JT gewählt wurde, damit Variablen existieren)
   m_post <- NULL
   sd_post <- NULL
 
-  # HLL war in deinem Originalcode erwähnt, aber nicht in den Argumenten.
-  # Ich lasse es drin, falls es intern genutzt wird.
   if (cs_method %in% c("HLL", "HA")) {
     m_post <- mean(datasets[["data"]][["post"]], na.rm = TRUE)
     sd_post <- stats::sd(datasets[["data"]][["post"]], na.rm = TRUE)
   }
 
-  # Direction
-  direction <- if (better_is[1] == "lower") -1 else 1
-
   # Critical Value
-  # qnorm(0.975) für 2-sided 0.05 (JT), qnorm(0.95) für 1-sided (HA - falls das die Logik ist)
   if (cs_method != "HA") {
     critical_value <- stats::qnorm(1 - significance_level / 2)
   } else {
@@ -286,7 +381,7 @@ cs_statistical <- function(
   output <- list(
     datasets = datasets,
     cutoff_results = cutoff_results,
-    outcome = deparse(substitute(outcome)),
+    outcome = outcome,
     n_obs = n_obs,
     method = cs_method,
     reliability = reliability,
@@ -307,7 +402,7 @@ cs_statistical <- function(
 
 #' Print Method for the Statistical Approach
 #'
-#' @param x An object of class `cs_distribution`
+#' @param x An object of class `cs_statistical`
 #' @param ... Additional arguments
 #'
 #' @return No return value, called for side effects
@@ -344,10 +439,34 @@ print.cs_statistical <- function(x, ...) {
   )
 }
 
+#' Print Method for the Statistical Approach Sensitivity
+#'
+#' @param x An object of class `cs_statistical_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects
+#' @export
+print.cs_statistical_sensitivity <- function(x, ...) {
+  summary_table <- .format_summary_table(x[["summary_table"]])
+  cs_method <- x[["method"]]
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Statistical Sensitivity",
+      Method = cs_method
+    )
+  )
+
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
+
 
 #' Summary Method for the Statistical Approach
 #'
-#' @param object An object of class `cs_distribution`
+#' @param object An object of class `cs_statistical`
 #' @param ... Additional arguments
 #'
 #' @return No return value, called for side effects only
@@ -406,6 +525,68 @@ summary.cs_statistical <- function(object, ...) {
   .print_strings(
     model_info,
     cutoff_descriptives,
+    summary_table
+  )
+}
+
+#' Summary Method for the Statistical Approach Sensitivity
+#'
+#' @param object An object of class `cs_statistical_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects only
+#' @export
+#'
+#' @examples
+#' cs_results <- claus_2020 |>
+#'   cs_statistical(
+#'     id, time, hamd, pre = 1, post = 4,
+#'     m_functional = seq(7, 9, by = 1),
+#'     sd_functional = 7,
+#'     cutoff_type = "c"
+#'   )
+#'
+#' summary(cs_results)
+summary.cs_statistical_sensitivity <- function(object, ...) {
+  summary_table <- .format_summary_table(
+    object[["summary_table"]],
+    table_title = "-- Results"
+  )
+
+  cs_method <- object[["method"]]
+  n_original <- cs_get_n(object, "original")[[1]]
+  n_used <- cs_get_n(object, "used")[[1]]
+  cutoff_type <- object[["cutoff_type"]]
+  outcome <- object[["outcome"]]
+
+  # Helper zur sicheren Formatierung der ranges
+  format_range <- function(x) {
+    if (is.null(x)) {
+      return("---")
+    }
+    if (length(x) == 1) {
+      return(as.character(round(x, 2)))
+    }
+    paste0(round(min(x), 2), " to ", round(max(x), 2))
+  }
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Statistical Sensitivity",
+      Method = cs_method,
+      "N (original)" = n_original,
+      "N (used)" = n_used,
+      "Percent used" = insight::format_percent(n_used / n_original),
+      "Cutoff type" = cutoff_type,
+      "Range M Functional" = format_range(object[["m_functional"]]),
+      "Range SD Functional" = format_range(object[["sd_functional"]]),
+      "Range Reliability" = format_range(object[["reliability"]])
+    )
+  )
+
+  # Print output (Cutoff Descriptives weggelassen, da diese durch die Sensitivitätsanalyse je nach Modell variieren)
+  .print_strings(
+    model_info,
     summary_table
   )
 }
