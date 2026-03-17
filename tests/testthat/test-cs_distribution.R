@@ -37,7 +37,7 @@ test_that("cs_distribution input validation: Basics", {
   # 2. Checkmate Typ-Checks
   expect_error(
     cs_distribution(test_data_dist, id, time, score, reliability = "high"),
-    "Must be of type 'number'"
+    "Must be of type 'numeric'"
   )
 
   # 3. Range Checks
@@ -96,7 +96,7 @@ test_that("cs_distribution logic: Nunnally & Kotsch (NK)", {
       rci_method = "NK",
       reliability = 0.8
     ),
-    "Argument `reliability_post` was not supplied"
+    "Using `reliability` for `reliability_post` as well"
   )
 
   # Prüfen, ob der Fallback intern funktioniert hat
@@ -162,8 +162,8 @@ test_that("cs_distribution returns correct structure", {
       "datasets",
       "rci_results",
       "outcome",
-      "n_obs",
       "method",
+      "n_obs",
       "reliability",
       "critical_value",
       "summary_table"

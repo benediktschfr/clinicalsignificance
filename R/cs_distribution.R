@@ -414,7 +414,7 @@ cs_distribution <- function(
   output <- list(
     datasets = datasets,
     rci_results = rci_results,
-    outcome = deparse(substitute(outcome)),
+    outcome = outcome,
     method = cs_method,
     n_obs = n_obs,
     reliability = reliability,
