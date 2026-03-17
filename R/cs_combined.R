@@ -29,6 +29,7 @@
 #' @inheritParams cs_distribution
 #' @inheritParams cs_statistical
 #' @inheritParams cs_anchor
+#' @param ... Additional arguments passed to methods.
 #'
 #' @family main
 #'
@@ -90,7 +91,13 @@
 #' cs_results_grouped
 #' summary(cs_results_grouped)
 #' plot(cs_results_grouped)
-cs_combined <- function(
+cs_combined <- function(data, ...) {
+  UseMethod("cs_combined")
+}
+
+#' @export
+#' @describeIn cs_combined Default method for data frames
+cs_combined.default <- function(
   data,
   id,
   time,
@@ -107,7 +114,8 @@ cs_combined <- function(
   better_is = c("lower", "higher"),
   rci_method = c("JT", "GLN", "HLL", "EN", "NK", "HA", "HLM"),
   cutoff_type = c("a", "b", "c"),
-  significance_level = 0.05
+  significance_level = 0.05,
+  ...
 ) {
   cs_method <- rlang::arg_match(rci_method)
   cut_type <- rlang::arg_match(cutoff_type)
@@ -137,38 +145,49 @@ cs_combined <- function(
     finite = TRUE
   )
 
-  checkmate::assert_number(
+  # Check Sensitivity Parameters
+  checkmate::assert_numeric(
     mid_improvement,
     lower = 0,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
-  checkmate::assert_number(
+  checkmate::assert_numeric(
     mid_deterioration,
     lower = 0,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
-  checkmate::assert_number(
+  checkmate::assert_numeric(
     reliability,
     lower = 0,
     upper = 1,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
-  checkmate::assert_number(
+  checkmate::assert_numeric(
     reliability_post,
     lower = 0,
     upper = 1,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
-  checkmate::assert_number(m_functional, finite = TRUE, null.ok = TRUE)
-  checkmate::assert_number(
+  checkmate::assert_numeric(
+    m_functional,
+    finite = TRUE,
+    null.ok = TRUE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(
     sd_functional,
     lower = 0,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
 
   if (is.null(mid_improvement) && cs_method != "HLM") {
@@ -186,6 +205,21 @@ cs_combined <- function(
         "x" = "For cutoff types {.val b} and {.val c}, mean and SD of the functional population are required.",
         "i" = "Please supply {.arg m_functional} and {.arg sd_functional}."
       ))
+    }
+  }
+
+  if (cs_method == "JT" && !is.null(reliability)) {
+    cli::cli_alert_info(
+      "Argument {.arg reliability} is not used for the JT cutoff calculation but is used for RCI."
+    )
+  }
+
+  if (cs_method == "NK") {
+    if (is.null(reliability_post)) {
+      cli::cli_alert_info(
+        "Using {.arg reliability} for {.arg reliability_post} as well."
+      )
+      reliability_post <- reliability
     }
   }
 
@@ -207,14 +241,161 @@ cs_combined <- function(
   if (use_anchor) {
     class(datasets) <- c("cs_anchor_individual", class(datasets))
     cs_method <- "CWB"
-
-    # Defaults handling
+    # Symmetric Default for Non-Grid
     if (is.null(mid_deterioration)) mid_deterioration <- mid_improvement
   } else {
-    # Distribution-Based Logic
     class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
   }
 
+  # Get direction and outcome safely
+  direction <- if (better_is[1] == "lower") -1 else 1
+  outcome_name <- deparse(substitute(outcome))
+
+  is_sensitivity <- length(m_functional) > 1 ||
+    length(sd_functional) > 1 ||
+    length(reliability) > 1 ||
+    length(reliability_post) > 1 ||
+    length(mid_improvement) > 1 ||
+    length(mid_deterioration) > 1
+
+  # >>> SENSITIVITÄTSANALYSE ODER STANDARD <<<
+  if (is_sensitivity) {
+    # NULL in NA_real_ umwandeln, damit expand_grid funktioniert
+    mid_imp_vec <- if (is.null(mid_improvement)) NA_real_ else mid_improvement
+    mid_det_vec <- if (is.null(mid_deterioration)) {
+      NA_real_
+    } else {
+      mid_deterioration
+    }
+    rel_vec <- if (is.null(reliability)) NA_real_ else reliability
+    rel_post_vec <- if (is.null(reliability_post)) {
+      NA_real_
+    } else {
+      reliability_post
+    }
+    m_func_vec <- if (is.null(m_functional)) NA_real_ else m_functional
+    sd_func_vec <- if (is.null(sd_functional)) NA_real_ else sd_functional
+
+    # Erstelle ein Grid aus allen Kombinationen
+    results_list <- tidyr::expand_grid(
+      mid_improvement = mid_imp_vec,
+      mid_deterioration = mid_det_vec,
+      reliability = rel_vec,
+      reliability_post = rel_post_vec,
+      m_functional = m_func_vec,
+      sd_functional = sd_func_vec
+    ) |>
+      dplyr::mutate(
+        # Symmetrische Werte auffüllen, falls det = NA aber imp gegeben
+        mid_deterioration = dplyr::if_else(
+          !is.na(mid_improvement) & is.na(mid_deterioration),
+          mid_improvement,
+          mid_deterioration
+        ),
+        # NK Methode Symmetrie für reliability_post auffüllen
+        reliability_post = dplyr::if_else(
+          cs_method == "NK" & is.na(reliability_post) & !is.na(reliability),
+          reliability,
+          reliability_post
+        )
+      ) |>
+      dplyr::mutate(
+        models = purrr::pmap(
+          list(
+            mid_improvement,
+            mid_deterioration,
+            reliability,
+            reliability_post,
+            m_functional,
+            sd_functional
+          ),
+          function(m_imp, m_det, rel, rel_post, m_func, sd_func) {
+            .core_combined(
+              datasets = datasets,
+              mid_improvement = if (is.na(m_imp)) NULL else m_imp,
+              mid_deterioration = if (is.na(m_det)) NULL else m_det,
+              reliability = if (is.na(rel)) NULL else rel,
+              reliability_post = if (is.na(rel_post)) NULL else rel_post,
+              m_functional = if (is.na(m_func)) NULL else m_func,
+              sd_functional = if (is.na(sd_func)) NULL else sd_func,
+              use_anchor = use_anchor,
+              cs_method = cs_method,
+              cut_type = cut_type,
+              direction = direction,
+              significance_level = significance_level,
+              outcome = outcome_name
+            )
+          }
+        )
+      )
+
+    # Bei Sensitivitätsanalysen entpacken wir primär das Individual Level Summary
+    combined_tables <- results_list |>
+      dplyr::mutate(
+        tables = purrr::map(
+          models,
+          ~ .x[["summary_table"]][["individual_level_summary"]]
+        )
+      ) |>
+      dplyr::select(-models) |>
+      tidyr::unnest(tables)
+
+    n_obs <- results_list |>
+      purrr::pluck("models", 1) |>
+      purrr::pluck("n_obs")
+
+    output <- list(
+      summary_table = combined_tables,
+      m_functional = m_functional,
+      sd_functional = sd_functional,
+      reliability = reliability,
+      reliability_post = reliability_post,
+      mid_improvement = mid_improvement,
+      mid_deterioration = mid_deterioration,
+      use_anchor = use_anchor,
+      method = cs_method,
+      cutoff_type = cut_type,
+      direction = direction,
+      n_obs = n_obs,
+      significance_level = significance_level,
+      outcome = outcome_name
+    )
+    class(output) <- c("cs_analysis", "cs_combined_sensitivity", "list")
+    return(output)
+  } else {
+    return(.core_combined(
+      datasets = datasets,
+      mid_improvement = mid_improvement,
+      mid_deterioration = mid_deterioration,
+      reliability = reliability,
+      reliability_post = reliability_post,
+      m_functional = m_functional,
+      sd_functional = sd_functional,
+      use_anchor = use_anchor,
+      cs_method = cs_method,
+      cut_type = cut_type,
+      direction = direction,
+      significance_level = significance_level,
+      outcome = outcome_name
+    ))
+  }
+}
+
+.core_combined <- function(
+  datasets,
+  mid_improvement,
+  mid_deterioration,
+  reliability,
+  reliability_post,
+  m_functional,
+  sd_functional,
+  use_anchor,
+  cs_method,
+  cut_type,
+  direction,
+  significance_level,
+  outcome
+) {
   # Count participants
   n_obs <- list(
     n_original = nrow(datasets[["wide"]]),
@@ -233,9 +414,6 @@ cs_combined <- function(
     m_post <- mean(datasets[["data"]][["post"]], na.rm = TRUE)
     sd_post <- stats::sd(datasets[["data"]][["post"]], na.rm = TRUE)
   }
-
-  # Direction
-  direction <- if (better_is[1] == "lower") -1 else 1
 
   # Critical Value
   if (cs_method != "HA") {
@@ -263,6 +441,7 @@ cs_combined <- function(
       data = datasets,
       mid_improvement = mid_improvement,
       mid_deterioration = mid_deterioration,
+      post = datasets[["post_name"]], # post is not explicitly passed to core_combined here, but calc_anchor handles it internally or we pass it
       direction = direction
     )
   }
@@ -304,11 +483,12 @@ cs_combined <- function(
     datasets = datasets,
     cutoff_results = cutoff_results,
     rci_results = rci_results,
-    outcome = deparse(substitute(outcome)),
+    outcome = outcome,
     n_obs = n_obs,
     method = cs_method,
     mid_improvement = mid_improvement,
     mid_deterioration = mid_deterioration,
+    use_anchor = use_anchor,
     direction = direction,
     reliability = reliability,
     critical_value = critical_value,
@@ -380,6 +560,33 @@ print.cs_combined <- function(x, ...) {
   }
 }
 
+#' Print Method for the Combined Approach Sensitivity
+#'
+#' @param x An object of class `cs_combined_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects
+#' @export
+print.cs_combined_sensitivity <- function(x, ...) {
+  # Bei Sensitivity haben wir die individual_level_summary direkt unnested
+  summary_table <- .format_summary_table(x[["summary_table"]])
+
+  cs_method <- x[["method"]]
+  direction <- if (x[["direction"]] == -1) "Lower" else "Higher"
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Combined Sensitivity",
+      "Method" = cs_method,
+      "Better is" = direction
+    )
+  )
+
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
 
 #' Summary Method for the Combined Approach
 #'
@@ -395,7 +602,6 @@ print.cs_combined <- function(x, ...) {
 #'
 #' summary(cs_results)
 summary.cs_combined <- function(object, ...) {
-  # browser()
   # Get necessary information from object
   summary_table <- .format_summary_table(
     object[["summary_table"]][[
@@ -429,19 +635,20 @@ summary.cs_combined <- function(object, ...) {
   }
 
   outcome <- object[["outcome"]]
+  direction <- if (object[["direction"]] == -1) "Lower" else "Higher"
 
   model_info <- list(
-    Approach = "Distribution-based",
+    Approach = "Combined",
     "RCI Method" = rci_method,
     "N (original)" = n_original,
     "N (used)" = n_used,
     "Percent used" = insight::format_percent(
       n_used / n_original
     ),
-    Outcome = object[["outcome"]],
     "Cutoff Type" = cutoff_type,
     Cutoff = cutoff_value,
-    Outcome = outcome
+    Outcome = outcome,
+    "Better is" = direction
   )
 
   if (rci_method == "HLM") {
@@ -450,10 +657,11 @@ summary.cs_combined <- function(object, ...) {
     )
   } else if (rci_method == "NK") {
     additional_info <- list(
-      "Realiability Pre" = cs_get_reliability(object)[[1]],
+      "Reliability Pre" = cs_get_reliability(object)[[1]],
       "Reliability Post" = cs_get_reliability(object)[[2]]
     )
   }
+
   if (rci_method == "CWB") {
     additional_info <- list(
       "MID (Improvement)" = mid_improvement,
@@ -471,6 +679,82 @@ summary.cs_combined <- function(object, ...) {
   .print_strings(
     model_info,
     cutoff_descriptives,
+    summary_table
+  )
+}
+
+#' Summary Method for the Combined Approach Sensitivity
+#'
+#' @param object An object of class `cs_combined_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects only
+#' @export
+summary.cs_combined_sensitivity <- function(object, ...) {
+  summary_table <- .format_summary_table(
+    object[["summary_table"]],
+    table_title = "-- Results"
+  )
+
+  rci_method <- object[["method"]]
+  n_original <- cs_get_n(object, "original")[[1]]
+  n_used <- cs_get_n(object, "used")[[1]]
+  cutoff_type <- object[["cutoff_type"]]
+  outcome <- object[["outcome"]]
+  direction <- if (object[["direction"]] == -1) "Lower" else "Higher"
+
+  format_range <- function(x) {
+    if (is.null(x)) {
+      return("---")
+    }
+    if (length(x) == 1) {
+      return(as.character(round(x, 2)))
+    }
+    paste0(round(min(x), 2), " to ", round(max(x), 2))
+  }
+
+  model_info <- list(
+    Approach = "Combined Sensitivity",
+    "RCI Method" = rci_method,
+    "N (original)" = n_original,
+    "N (used)" = n_used,
+    "Percent used" = insight::format_percent(n_used / n_original),
+    "Cutoff Type" = cutoff_type,
+    "Range M Functional" = format_range(object[["m_functional"]]),
+    "Range SD Functional" = format_range(object[["sd_functional"]]),
+    Outcome = outcome,
+    "Better is" = direction
+  )
+
+  if (rci_method == "CWB") {
+    mid_det <- format_range(object[["mid_deterioration"]])
+    if (is.null(object[["mid_deterioration"]])) {
+      mid_det <- paste0(
+        format_range(object[["mid_improvement"]]),
+        " (symmetric)"
+      )
+    }
+
+    additional_info <- list(
+      "Range MID Improvement" = format_range(object[["mid_improvement"]]),
+      "Range MID Deterioration" = mid_det
+    )
+  } else {
+    additional_info <- list(
+      "Range Reliability" = format_range(object[["reliability"]])
+    )
+    if (rci_method == "NK") {
+      additional_info[["Range Reliability Post"]] <- format_range(object[[
+        "reliability_post"
+      ]])
+    }
+  }
+
+  model_info <- .format_model_info_string(c(model_info, additional_info))
+
+  # Print output (ohne Cutoff Descriptives, da sie im Grid variieren)
+  .print_strings(
+    model_info,
     summary_table
   )
 }

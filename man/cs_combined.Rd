@@ -2,9 +2,12 @@
 % Please edit documentation in R/cs_combined.R
 \name{cs_combined}
 \alias{cs_combined}
+\alias{cs_combined.default}
 \title{Combined Analysis of Clinical Significance}
 \usage{
-cs_combined(
+cs_combined(data, ...)
+
+\method{cs_combined}{default}(
   data,
   id,
   time,
@@ -21,11 +24,14 @@ cs_combined(
   better_is = c("lower", "higher"),
   rci_method = c("JT", "GLN", "HLL", "EN", "NK", "HA", "HLM"),
   cutoff_type = c("a", "b", "c"),
-  significance_level = 0.05
+  significance_level = 0.05,
+  ...
 )
 }
 \arguments{
 \item{data}{A tidy data frame}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{id}{Participant ID}
 
@@ -106,6 +112,11 @@ switched from the clinical to the functional population during
 intervention. Several methods for calculating the cutoff and RCI are
 available.
 }
+\section{Methods (by class)}{
+\itemize{
+\item \code{cs_combined(default)}: Default method for data frames
+
+}}
 \section{Categories}{
  Each individual's change can then be categorized into
 the following groups:
