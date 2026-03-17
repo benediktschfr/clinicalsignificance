@@ -30,6 +30,7 @@
 #' @param pct_deterioration Numeric, percent change that indicates a clinically
 #'   significant deterioration (optional). If this is not set,
 #'   `pct_deterioration` will be assumed to be equal to `pct_improvement`
+#' @param ... Additional arguments passed to methods.
 #'
 #' @family main
 #'
@@ -104,7 +105,13 @@
 #' summary(cs_results_who)
 #' plot(cs_results_who)
 #' plot(cs_results_who, show = category)
-cs_percentage <- function(
+cs_percentage <- function(data, ...) {
+  UseMethod("cs_percentage")
+}
+
+#' @export
+#' @describeIn cs_percentage Default method for data frames
+cs_percentage.default <- function(
   data,
   id,
   time,
@@ -114,7 +121,8 @@ cs_percentage <- function(
   post = NULL,
   pct_improvement = NULL,
   pct_deterioration = NULL,
-  better_is = c("lower", "higher")
+  better_is = c("lower", "higher"),
+  ...
 ) {
   rlang::arg_match(better_is)
 
@@ -140,20 +148,29 @@ cs_percentage <- function(
     )
   }
 
-  if (is.numeric(pct_improvement) && pct_improvement > 1) {
+  if (is.numeric(pct_improvement) && any(pct_improvement > 1)) {
+    first_invalid <- pct_improvement[pct_improvement > 1][1]
     cli::cli_abort(c(
       "{.arg pct_improvement} must be a probability between 0 and 1.",
-      "i" = "Did you mean {.val {pct_improvement / 100}} ({pct_improvement}%)?"
+      "i" = "Did you mean {.val {first_invalid / 100}} ({first_invalid}%)?"
     ))
   }
-  checkmate::assert_number(pct_improvement, lower = 0, upper = 1, finite = TRUE)
 
-  checkmate::assert_number(
+  checkmate::assert_numeric(
+    pct_improvement,
+    lower = 0,
+    upper = 1,
+    finite = TRUE,
+    min.len = 1
+  )
+
+  checkmate::assert_numeric(
     pct_deterioration,
     lower = 0,
     upper = 1,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
 
   checkmate::assert_data_frame(data)
@@ -163,7 +180,6 @@ cs_percentage <- function(
   }
 
   # Prepare the data
-  # Hier nutzen wir wieder den simplifizierten Aufruf, falls du .prep_data angepasst hast
   datasets <- .prep_data(
     data = data,
     id = {{ id }},
@@ -177,14 +193,86 @@ cs_percentage <- function(
   # Prepend a class
   class(datasets) <- c("cs_percentage", class(datasets))
 
+  # Get direction
+  direction <- if (better_is[1] == "lower") -1 else 1
+  outcome_name <- deparse(substitute(outcome))
+
+  # >>> SENSITIVITÄTSANALYSE ODER STANDARD <<<
+  if (length(pct_improvement) > 1) {
+    if (
+      length(pct_deterioration) > 1 &&
+        length(pct_improvement) != length(pct_deterioration)
+    ) {
+      cli::cli_abort(
+        "Lengths of {.arg pct_improvement} and {.arg pct_deterioration} must match."
+      )
+    } else if (length(pct_deterioration) == 1) {
+      pct_deterioration <- rep(pct_deterioration, length(pct_improvement))
+    }
+
+    results_list <- tibble::tibble(
+      pct_improvement = pct_improvement,
+      pct_deterioration = pct_deterioration
+    ) |>
+      dplyr::mutate(
+        models = purrr::map2(
+          pct_improvement,
+          pct_deterioration,
+          function(p_imp, p_det) {
+            .core_percentage(
+              datasets = datasets,
+              pct_improvement = p_imp,
+              pct_deterioration = p_det,
+              direction = direction,
+              outcome = outcome_name
+            )
+          }
+        )
+      )
+
+    combined_tables <- results_list |>
+      dplyr::mutate(tables = purrr::map(models, cs_get_summary)) |>
+      dplyr::select(-models) |>
+      tidyr::unnest(tables)
+
+    n_obs <- results_list |>
+      purrr::pluck("models", 1) |>
+      purrr::pluck("n_obs")
+
+    output <- list(
+      summary_table = combined_tables,
+      pct_improvement = pct_improvement,
+      pct_deterioration = pct_deterioration,
+      better_is = better_is[[1]],
+      n_obs = n_obs,
+      direction = direction,
+      outcome = outcome_name
+    )
+    class(output) <- c("cs_analysis", "cs_percentage_sensitivity", "list")
+    return(output)
+  } else {
+    return(.core_percentage(
+      datasets = datasets,
+      pct_improvement = pct_improvement,
+      pct_deterioration = pct_deterioration,
+      direction = direction,
+      outcome = outcome_name
+    ))
+  }
+}
+
+.core_percentage <- function(
+  datasets,
+  pct_improvement,
+  pct_deterioration,
+  direction,
+  outcome
+) {
   # Count participants
   n_obs <- list(
     n_original = nrow(datasets[["wide"]]),
     n_used = nrow(datasets[["data"]])
   )
-
-  # Get direction (safe, da oben gecheckt)
-  direction <- if (better_is[1] == "lower") -1 else 1
 
   # Determine RCI and check each participant's change relative to it
   pct_results <- calc_percentage(
@@ -206,7 +294,7 @@ cs_percentage <- function(
   output <- list(
     datasets = datasets,
     pct_results = pct_results,
-    outcome = deparse(substitute(outcome)),
+    outcome = outcome,
     n_obs = n_obs,
     pct_improvement = pct_improvement,
     pct_deterioration = pct_deterioration,
@@ -218,7 +306,6 @@ cs_percentage <- function(
   class(output) <- c("cs_analysis", "cs_percentage", class(output))
   output
 }
-
 
 #' Print Method for the Percentange-Change Approach
 #'
@@ -264,10 +351,36 @@ print.cs_percentage <- function(x, ...) {
     model_info,
     summary_table
   )
-
-  # Print output
 }
 
+#' Print Method for the Percentage-Change Approach Sensitivity
+#'
+#' @param x An object of class `cs_percentage_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects
+#' @export
+print.cs_percentage_sensitivity <- function(x, ...) {
+  summary_table <- .format_summary_table(x[["summary_table"]])
+
+  if (x[["direction"]] == -1) {
+    direction <- "Lower"
+  } else {
+    direction <- "Higher"
+  }
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Percentage-based Sensitivity",
+      "Better is" = direction
+    )
+  )
+
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
 
 #' Summary Method for the Percentage-Change Approach
 #'
@@ -319,7 +432,66 @@ summary.cs_percentage <- function(object, ...) {
     )
   )
 
-  # Print output
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
+
+#' Summary Method for the Percentage-Change Approach Sensitivity
+#'
+#' @param object An object of class `cs_percentage_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects only
+#' @export
+#'
+#' @examples
+#' cs_results <- claus_2020 |>
+#'   cs_percentage(
+#'     id,
+#'     time,
+#'     bdi,
+#'     pre = 1,
+#'     post = 4,
+#'     pct_improvement = seq(0.3, 0.6, by = 0.1)
+#'   )
+#'
+#' summary(cs_results)
+summary.cs_percentage_sensitivity <- function(object, ...) {
+  # Get necessary information from object
+  summary_table <- .format_summary_table(object[["summary_table"]])
+
+  pct_imp_min <- insight::format_percent(min(object[["pct_improvement"]]))
+  pct_imp_max <- insight::format_percent(max(object[["pct_improvement"]]))
+  pct_improvement <- paste0(pct_imp_min, " to ", pct_imp_max)
+
+  pct_det_min <- insight::format_percent(min(object[["pct_deterioration"]]))
+  pct_det_max <- insight::format_percent(max(object[["pct_deterioration"]]))
+  pct_deterioration <- paste0(pct_det_min, " to ", pct_det_max)
+
+  if (object[["direction"]] == -1) {
+    direction <- "Lower"
+  } else {
+    direction <- "Higher"
+  }
+
+  n_original <- cs_get_n(object, "original")[[1]]
+  n_used <- cs_get_n(object, "used")[[1]]
+  outcome <- object[["outcome"]]
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Percentage-based Sensitivity",
+      "Percentage Improvement" = pct_improvement,
+      "Percentage Deterioration" = pct_deterioration,
+      "Better is" = direction,
+      "N (original)" = n_original,
+      "N (used)" = n_used,
+      "Percent used" = insight::format_percent(n_used / n_original),
+      Outcome = outcome
+    )
+  )
 
   .print_strings(
     model_info,

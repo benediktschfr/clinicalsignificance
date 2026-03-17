@@ -2,9 +2,12 @@
 % Please edit documentation in R/cs_percentage.R
 \name{cs_percentage}
 \alias{cs_percentage}
+\alias{cs_percentage.default}
 \title{Percentage-Change Analysis of Clinical Significance}
 \usage{
-cs_percentage(
+cs_percentage(data, ...)
+
+\method{cs_percentage}{default}(
   data,
   id,
   time,
@@ -14,11 +17,14 @@ cs_percentage(
   post = NULL,
   pct_improvement = NULL,
   pct_deterioration = NULL,
-  better_is = c("lower", "higher")
+  better_is = c("lower", "higher"),
+  ...
 )
 }
 \arguments{
 \item{data}{A tidy data frame}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{id}{Participant ID}
 
@@ -58,6 +64,11 @@ approach. For this, each individuals relative change compared to the pre
 intervention measurement and if this change exceeds a predefined change in
 percent points, this change is then deemed clinically significant.
 }
+\section{Methods (by class)}{
+\itemize{
+\item \code{cs_percentage(default)}: Default method for data frames
+
+}}
 \section{Computational details}{
  Each participants change is calculated and
 then divided by the pre intervention score to estimate the individual's
