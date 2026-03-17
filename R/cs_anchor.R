@@ -33,6 +33,7 @@
 #' @param mid_deterioration Numeric, the minimal change that indicates a
 #'   clinically significant deterioration (optional). If `mid_deterioration` is
 #'   not provided, it will be assumed to be equal to `mid_improvement`.
+#' @param ... Additional arguments passed to methods.
 #'
 #' @family main
 #'
@@ -75,17 +76,24 @@
 #'     mid_improvement = 8,
 #'     better_is = "lower"
 #'   )
-cs_anchor <- function(
+cs_anchor <- function(data, ...) {
+  UseMethod("cs_anchor")
+}
+
+#' @export
+#' @describeIn cs_anchor Default method for data frames
+cs_anchor.default <- function(
   data,
   id,
   time,
   outcome,
-  group,
+  group = NULL,
   pre = NULL,
   post = NULL,
   mid_improvement = NULL,
   mid_deterioration = NULL,
-  better_is = c("lower", "higher")
+  better_is = c("lower", "higher"),
+  ...
 ) {
   rlang::arg_match(better_is)
 
@@ -105,19 +113,21 @@ cs_anchor <- function(
     )
   }
 
-  checkmate::assert_number(mid_improvement, lower = 0, finite = TRUE)
-  checkmate::assert_number(
+  checkmate::assert_numeric(
+    mid_improvement,
+    lower = 0,
+    finite = TRUE,
+    min.len = 1
+  )
+  checkmate::assert_numeric(
     mid_deterioration,
     lower = 0,
     finite = TRUE,
-    null.ok = TRUE
+    null.ok = TRUE,
+    min.len = 1
   )
 
   checkmate::assert_data_frame(data)
-
-  if (is.null(mid_deterioration)) {
-    mid_deterioration <- mid_improvement
-  }
 
   # Prepare the data
   datasets <- .prep_data(
@@ -130,25 +140,115 @@ cs_anchor <- function(
     post = {{ post }}
   )
 
-  # Prepend a class to enable method dispatch for RCI calculation
+  # Prepend a class to enable method dispatch
   prepend_classes <- c(
     "cs_anchor",
     paste("cs", "anchor", "individual", sep = "_")
   )
   class(datasets) <- c(prepend_classes, class(datasets))
 
+  # Get direction and outcome safely
+  direction <- if (better_is[1] == "lower") -1 else 1
+  outcome_name <- deparse(substitute(outcome))
+
+  is_sensitivity <- length(mid_improvement) > 1 || length(mid_deterioration) > 1
+
+  # >>> SENSITIVITÄTSANALYSE ODER STANDARD <<<
+  if (is_sensitivity) {
+    # NULL in NA_real_ umwandeln, damit expand_grid funktioniert
+    mid_det_vec <- if (is.null(mid_deterioration)) {
+      NA_real_
+    } else {
+      mid_deterioration
+    }
+
+    # Erstelle ein Grid aus allen Kombinationen
+    results_list <- tidyr::expand_grid(
+      mid_improvement = mid_improvement,
+      mid_deterioration = mid_det_vec
+    ) |>
+      dplyr::mutate(
+        # FIX: NA Werte (entstanden durch NULL) durch die symmetrischen improvement Werte ersetzen
+        mid_deterioration = dplyr::if_else(
+          is.na(mid_deterioration),
+          mid_improvement,
+          mid_deterioration
+        )
+      ) |>
+      dplyr::mutate(
+        models = purrr::pmap(
+          list(mid_improvement, mid_deterioration),
+          function(imp, det) {
+            # det ist hier jetzt immer ein valider numerischer Wert
+            .core_anchor_individual(
+              datasets = datasets,
+              mid_improvement = imp,
+              mid_deterioration = det,
+              post = post,
+              direction = direction,
+              outcome = outcome_name,
+              prepend_classes = prepend_classes
+            )
+          }
+        )
+      )
+
+    combined_tables <- results_list |>
+      dplyr::mutate(tables = purrr::map(models, cs_get_summary)) |>
+      dplyr::select(-models) |>
+      tidyr::unnest(tables)
+
+    n_obs <- results_list |>
+      purrr::pluck("models", 1) |>
+      purrr::pluck("n_obs")
+
+    output <- list(
+      summary_table = combined_tables,
+      mid_improvement = mid_improvement,
+      mid_deterioration = mid_deterioration,
+      better_is = better_is[[1]],
+      n_obs = n_obs,
+      direction = direction,
+      outcome = outcome_name
+    )
+    class(output) <- c(
+      "cs_analysis",
+      "cs_anchor_individual_sensitivity",
+      "list"
+    )
+    return(output)
+  } else {
+    # Wenn mid_deterioration NULL ist, wird es dem improvement gleichgesetzt
+    if (is.null(mid_deterioration)) {
+      mid_deterioration <- mid_improvement
+    }
+
+    return(.core_anchor_individual(
+      datasets = datasets,
+      mid_improvement = mid_improvement,
+      mid_deterioration = mid_deterioration,
+      post = post,
+      direction = direction,
+      outcome = outcome_name,
+      prepend_classes = prepend_classes
+    ))
+  }
+}
+
+.core_anchor_individual <- function(
+  datasets,
+  mid_improvement,
+  mid_deterioration,
+  post,
+  direction,
+  outcome,
+  prepend_classes
+) {
   # Count participants
   n_obs <- list(
     n_original = nrow(datasets[["wide"]]),
     n_used = nrow(datasets[["data"]])
   )
-
-  # Get the direction of a beneficial intervention effect
-  if (rlang::arg_match(better_is) == "lower") {
-    direction <- -1
-  } else {
-    direction <- 1
-  }
 
   # Check each participant's change relative to MID
   anchor_results <- calc_anchor(
@@ -171,7 +271,7 @@ cs_anchor <- function(
   output <- list(
     datasets = datasets,
     anchor_results = anchor_results,
-    outcome = deparse(substitute(outcome)),
+    outcome = outcome,
     n_obs = n_obs,
     mid_improvement = mid_improvement,
     mid_deterioration = mid_deterioration,
@@ -224,6 +324,35 @@ print.cs_anchor_individual <- function(x, ...) {
   )
 }
 
+#' Print Method for the Anchor-Based Approach Sensitivity
+#'
+#' @param x An object of class `cs_anchor_individual_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects
+#' @export
+print.cs_anchor_individual_sensitivity <- function(x, ...) {
+  summary_table <- .format_summary_table(x[["summary_table"]])
+
+  if (x[["direction"]] == -1) {
+    direction <- "Lower"
+  } else {
+    direction <- "Higher"
+  }
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Anchor-based Sensitivity",
+      "Better is" = direction
+    )
+  )
+
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
+
 
 #' Summary Method for the Anchor-Based Approach
 #'
@@ -244,7 +373,7 @@ print.cs_anchor_individual <- function(x, ...) {
 #'     mid_improvement = 7
 #'   )
 #'
-#' cs_results
+#' summary(cs_results)
 summary.cs_anchor_individual <- function(object, ...) {
   # Get necessary information from object
   summary_table <- .format_summary_table(object[["summary_table"]])
@@ -252,7 +381,6 @@ summary.cs_anchor_individual <- function(object, ...) {
   mid_deterioration <- object[["mid_deterioration"]]
   n_original <- cs_get_n(object, "original")[[1]]
   n_used <- cs_get_n(object, "used")[[1]]
-  pct <- round(n_used / n_original, digits = 3) * 100
 
   if (object[["direction"]] == -1) {
     direction <- "Lower"
@@ -276,6 +404,64 @@ summary.cs_anchor_individual <- function(object, ...) {
   )
 
   # Print output
+  .print_strings(
+    model_info,
+    summary_table
+  )
+}
+
+#' Summary Method for the Anchor-Based Approach Sensitivity
+#'
+#' @param object An object of class `cs_anchor_individual_sensitivity`
+#' @param ... Additional arguments
+#'
+#' @return No return value, called for side effects only
+#' @export
+summary.cs_anchor_individual_sensitivity <- function(object, ...) {
+  summary_table <- .format_summary_table(object[["summary_table"]])
+
+  # Helper zur Formatierung der Ranges
+  format_range <- function(x) {
+    if (is.null(x)) {
+      return("---")
+    }
+    if (length(x) == 1) {
+      return(as.character(round(x, 2)))
+    }
+    paste0(round(min(x), 2), " to ", round(max(x), 2))
+  }
+
+  mid_improvement <- format_range(object[["mid_improvement"]])
+  mid_deterioration <- format_range(object[["mid_deterioration"]])
+
+  # Spezifischer Fall: mid_deterioration wurde nicht übergeben (Symmetrie impliziert)
+  if (is.null(object[["mid_deterioration"]])) {
+    mid_deterioration <- paste0(mid_improvement, " (symmetric)")
+  }
+
+  if (object[["direction"]] == -1) {
+    direction <- "Lower"
+  } else {
+    direction <- "Higher"
+  }
+
+  n_original <- cs_get_n(object, "original")[[1]]
+  n_used <- cs_get_n(object, "used")[[1]]
+  outcome <- object[["outcome"]]
+
+  model_info <- .format_model_info_string(
+    list(
+      Approach = "Anchor-based Sensitivity",
+      "Range MID Improvement" = mid_improvement,
+      "Range MID Deterioration" = mid_deterioration,
+      "N (original)" = n_original,
+      "N (used)" = n_used,
+      "Percent (used)" = insight::format_percent(n_used / n_original),
+      "Better is" = direction,
+      Outcome = outcome
+    )
+  )
+
   .print_strings(
     model_info,
     summary_table

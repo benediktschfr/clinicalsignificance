@@ -2,23 +2,29 @@
 % Please edit documentation in R/cs_anchor.R
 \name{cs_anchor}
 \alias{cs_anchor}
+\alias{cs_anchor.default}
 \title{Anchor-Based Analysis of Clinical Significance for Individuals}
 \usage{
-cs_anchor(
+cs_anchor(data, ...)
+
+\method{cs_anchor}{default}(
   data,
   id,
   time,
   outcome,
-  group,
+  group = NULL,
   pre = NULL,
   post = NULL,
   mid_improvement = NULL,
   mid_deterioration = NULL,
-  better_is = c("lower", "higher")
+  better_is = c("lower", "higher"),
+  ...
 )
 }
 \arguments{
 \item{data}{A tidy data frame}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{id}{Participant ID}
 
@@ -62,6 +68,11 @@ that patients perceive as beneficial. The function categorizes each
 participant's change into one of three categories: improved, unchanged, or
 deteriorated.
 }
+\section{Methods (by class)}{
+\itemize{
+\item \code{cs_anchor(default)}: Default method for data frames
+
+}}
 \section{Computational details}{
 
 The analysis compares the individual change of each participant (post -

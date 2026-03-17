@@ -28,5 +28,5 @@ cs_results <- claus_2020 |>
     mid_improvement = 7
   )
 
-cs_results
+summary(cs_results)
 }
