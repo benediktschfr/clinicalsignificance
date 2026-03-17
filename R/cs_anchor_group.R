@@ -103,14 +103,20 @@ cs_anchor_group.default <- function(
   checkmate::assert_data_frame(data)
   checkmate::assert_logical(bayesian, len = 1)
 
-  # Logik-Checks für Design
+  # NSE-sichere Logik-Checks für Design
   if (cs_effect == "between") {
-    if (missing(group) || is.null(group)) {
+    if (
+      rlang::quo_is_missing(rlang::enquo(group)) ||
+        rlang::quo_is_null(rlang::enquo(group))
+    ) {
       cli::cli_abort(
         "Argument {.arg group} is missing. Necessary for between-group calculations."
       )
     }
-    if (missing(post) || is.null(post)) {
+    if (
+      rlang::quo_is_missing(rlang::enquo(post)) ||
+        rlang::quo_is_null(rlang::enquo(post))
+    ) {
       cli::cli_abort(
         "Argument {.arg post} is missing. Please specify the measurement timepoint for group comparison."
       )
@@ -261,11 +267,18 @@ cs_anchor_group.default <- function(
   outcome_name,
   prepend_classes
 ) {
-  # Count participants
-  n_obs <- list(
-    n_original = nrow(datasets[["wide"]]),
-    n_used = nrow(datasets[["data"]])
-  )
+  # Count participants appropriately depending on design
+  if (cs_effect == "within") {
+    n_obs <- list(
+      n_original = nrow(datasets[["wide"]]),
+      n_used = nrow(datasets[["data"]])
+    )
+  } else {
+    n_obs <- list(
+      n_original = nrow(datasets),
+      n_used = nrow(datasets)
+    )
+  }
 
   # Check each participant's or group change relative to MID
   anchor_results <- calc_anchor(
@@ -731,8 +744,6 @@ summary.cs_anchor_group_between_sensitivity <- function(object, ...) {
   }
 
   direction <- if (object[["direction"]] == -1) "Lower" else "Higher"
-  n_original <- cs_get_n(object, "original")[[1]]
-  n_used <- cs_get_n(object, "used")[[1]]
   outcome <- object[["outcome"]]
 
   model_info <- .format_model_info_string(
@@ -740,9 +751,6 @@ summary.cs_anchor_group_between_sensitivity <- function(object, ...) {
       Approach = "Anchor-based (between groups) Sensitivity",
       "Range MID Improvement" = mid_improvement,
       "Range MID Deterioration" = mid_deterioration,
-      "N (original)" = n_original,
-      "N (used)" = n_used,
-      "Percent used" = insight::format_percent(n_used / n_original),
       "Better is" = direction,
       Outcome = outcome
     )
