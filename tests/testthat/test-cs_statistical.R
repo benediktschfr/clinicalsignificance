@@ -206,3 +206,64 @@ test_that("cs_statistical snapshots (Print/Summary)", {
   expect_snapshot(print(res_ha_c))
   expect_snapshot(summary(res_ha_c))
 })
+
+# --- NEUE TESTS FÜR SENSITIVITÄTSANALYSE (GRID) ---
+
+test_that("cs_statistical sensitivity analysis creates a full grid", {
+  res <- cs_statistical(
+    test_data_stat,
+    id,
+    time,
+    score,
+    pre = 1,
+    post = 2,
+    cutoff_type = "c",
+    m_functional = c(10, 15), # 2 Werte
+    sd_functional = c(2, 3, 4) # 3 Werte
+    # reliability ist NULL (JT method default) -> 1 Wert
+  )
+
+  expect_s3_class(res, "cs_statistical_sensitivity")
+  expect_s3_class(res, "cs_analysis")
+
+  # Grid should get 3 (cs categories) * 2 (m_functional) * 3 (sd_functional) * 1 (reliability) = 18 rows in summary_table
+  expect_equal(nrow(res$summary_table), 18)
+})
+
+test_that("cs_statistical sensitivity analysis works with HA and reliability", {
+  res <- cs_statistical(
+    test_data_stat,
+    id,
+    time,
+    score,
+    pre = 1,
+    post = 2,
+    cutoff_method = "HA",
+    cutoff_type = "c",
+    m_functional = 10, # 1 Wert
+    sd_functional = c(2, 4), # 2 Werte
+    reliability = c(0.7, 0.8, 0.9) # 3 Werte
+  )
+
+  # Grid should be 3 (cs categories) * 1 (m_functional) * 2 (sd_functional) * 3 (reliability) = 18 Zeilen in der summary_table haben
+  expect_equal(nrow(res$summary_table), 18)
+  expect_equal(res$method, "HA")
+})
+
+test_that("cs_statistical_sensitivity snapshots (Print/Summary)", {
+  # Parameter fixieren für stabilen Snapshot
+  res_sens <- cs_statistical(
+    test_data_stat,
+    id,
+    time,
+    score,
+    pre = 1,
+    post = 2,
+    cutoff_type = "c",
+    m_functional = c(10, 15),
+    sd_functional = c(2, 5)
+  )
+
+  expect_snapshot(print(res_sens))
+  expect_snapshot(summary(res_sens))
+})
