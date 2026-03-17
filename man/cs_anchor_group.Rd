@@ -2,16 +2,19 @@
 % Please edit documentation in R/cs_anchor_group.R
 \name{cs_anchor_group}
 \alias{cs_anchor_group}
-\title{Anchor-Based Analysis of Clinical Significance for Groups}
+\alias{cs_anchor_group.default}
+\title{Groupwise Anchor-Based Analysis of Clinical Significance}
 \usage{
-cs_anchor_group(
+cs_anchor_group(data, ...)
+
+\method{cs_anchor_group}{default}(
   data,
   id,
   time,
   outcome,
-  group,
-  pre,
-  post,
+  group = NULL,
+  pre = NULL,
+  post = NULL,
   mid_improvement = NULL,
   mid_deterioration = NULL,
   better_is = c("lower", "higher"),
@@ -19,11 +22,14 @@ cs_anchor_group(
   bayesian = TRUE,
   prior_scale = "medium",
   reference_group = NULL,
-  ci_level = 0.95
+  ci_level = 0.95,
+  ...
 )
 }
 \arguments{
 \item{data}{A tidy data frame}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{id}{Participant ID}
 
@@ -40,11 +46,11 @@ than two measurements)}
 than two measurements)}
 
 \item{mid_improvement}{Numeric, change that indicates a clinically
-significant improvement.}
+significant improvement}
 
 \item{mid_deterioration}{Numeric, change that indicates a clinically
-significant deterioration (optional). Mostly relevant for individual
-analyses, but kept for consistency.}
+significant deterioration (optional). If \code{mid_deterioration} is not
+provided, it will be assumed to be equal to \code{mid_improvement}}
 
 \item{better_is}{Which direction means a better outcome for the used
 instrument? Available are
@@ -53,152 +59,55 @@ instrument? Available are
 \item \code{"higher"} (higher outcome scores are desirable)
 }}
 
-\item{effect}{String, specifies the design of the group comparison. Available are:
+\item{effect}{String, if \code{target = "group"}, specify which effect should be
+calculated. Available are
 \itemize{
-\item \code{"within"} (the default): Calculates the mean/median pre-post change
-within a group.
-\item \code{"between"}: Calculates the mean/median difference between two groups at
-the \code{post} measurement. Requires the \code{group} argument.
+\item \code{"within"} (the default), which yields the mean pre-post intervention
+difference with associated confidence intervals
+\item \code{"between"}, which estimates the group wise mean difference and
+confidence intervals between two or more groups specified with the \code{group}
+argument at the specified measurement supplied with the \code{post}- argument
+The reference group may be supplied with \code{reference_group}
 }}
 
-\item{bayesian}{Logical. If \code{TRUE} (default), calculates a Bayesian estimate
-(median) with a Credible Interval. If \code{FALSE}, calculates a Frequentist
-mean difference with a Confidence Interval.}
+\item{bayesian}{Logical, only relevant if \code{target = "group"}. Indicates if a
+Bayesian estimate (i.e., the median) of group differences with a credible
+interval should be calculated (if set to \code{TRUE}, the default) or a
+frequentist mean difference with confidence interval (if set to \code{FALSE})}
 
-\item{prior_scale}{String or numeric, scales the Cauchy prior distribution
-for the Bayesian analysis. See \code{rscale} in \code{\link[BayesFactor:ttestBF]{BayesFactor::ttestBF()}} for
-details. Default is \code{"medium"}.}
+\item{prior_scale}{String or numeric, can be adjusted to change the Bayesian
+prior distribution. See the documentation for \code{rscale} in
+\code{\link[BayesFactor:ttestBF]{BayesFactor::ttestBF()}} for details.}
 
-\item{reference_group}{String, specifies the reference group for
-between-group comparisons (e.g., "Control" or "Placebo"). If not provided,
-the first level of the grouping factor is used.}
+\item{reference_group}{Specify the reference group to which all subsequent
+groups are compared against if \code{target = "group"} and \code{effect = "within"}
+(optional). Otherwise, the first distinct group is chosen based on
+alphabetical, numerical or factor ordering.}
 
-\item{ci_level}{Numeric, the confidence or credible interval level (e.g.,
-0.95 for 95\%).}
+\item{ci_level}{Numeric, define the credible or confidence interval level.
+The default is 0.95 for a 95\%-CI.}
+
+\item{target}{String, whether an individual or group analysis should be
+calculated. Available are
+\itemize{
+\item \code{"individual"} (the default) for which every individual participant is
+evaluated
+\item \code{"group"} for which only the group wise effect is evaluated
+}}
 }
 \value{
-An S3 object of class \code{cs_anchor_group_within} or
-\code{cs_anchor_group_between}.
+An S3 object of class \code{cs_analysis} and \code{cs_anchor}
 }
 \description{
-\code{cs_anchor_group()} evaluates clinical significance at the group
-level by comparing the magnitude of treatment effects against a Minimally
-Important Difference (MID).
-
-This function supports two study designs:
+Groupwise Anchor-Based Analysis of Clinical Significance
+}
+\section{Methods (by class)}{
 \itemize{
-\item \strong{Within-Group}: Compares the change from pre- to post-intervention
-against the MID.
-\item \strong{Between-Group}: Compares the difference between two groups (e.g.,
-Intervention vs. Control) at the post-measurement against the MID.
-}
+\item \code{cs_anchor_group(default)}: Default method for data frames
 
-The analysis can be performed using either a Bayesian (default) or a
-Frequentist framework.
-}
-\section{Computational details}{
-
-For group-level analyses, the function calculates the effect size (mean or
-median difference) and its associated uncertainty interval (Confidence
-Interval, CI, or Credible Interval, CrI). The clinical significance is
-determined by the position of this interval relative to the MID threshold.
-
-\strong{Categories of Clinical Significance:}
-Based on the relation between the CI/CrI and the MID, the effect is
-classified into one of 5 categories:
-\itemize{
-\item \strong{Statistically not significant}: The CI contains 0.
-\item \strong{Statistically significant but not clinically relevant}: The CI does
-not contain 0, but the entire interval is below the MID threshold.
-\item \strong{Not significantly less than the threshold}: The point estimate is
-below the MID, but the CI overlaps with the MID threshold.
-\item \strong{Probably clinically significant effect}: The point estimate exceeds
-the MID, but the lower limit of the CI is still below the MID.
-\item \strong{Large clinically significant effect}: The entire CI exceeds the MID
-threshold.
-}
-
-\strong{Bayesian vs. Frequentist:}
-\itemize{
-\item If \code{bayesian = TRUE} (default), the median difference and a Credible
-Interval are calculated. The prior can be adjusted using \code{prior_scale}.
-\item If \code{bayesian = FALSE}, a frequentist mean difference and Confidence
-Interval (t-distribution) are used.
-}
-}
-
-\section{Data preparation}{
- The data set must be tidy, which corresponds to a
-long data frame in general. It must contain a patient identifier which must
-be unique per patient. Also, a column containing the different measurements
-and the outcome must be supplied. Each participant-measurement combination
-must be unique, so for instance, the data must not contain two "After"
-measurements for the same patient.
-
-Additionally, if the measurement column contains only two values, the first
-value based on alphabetical, numerical or factor ordering will be used as
-the \code{pre} measurement. For instance, if the column contains the
-measurements identifiers \code{"pre"} and \code{"post"} as strings, then \code{"post"}
-will be sorted before \code{"pre"} and thus be used as the \code{"pre"} measurement.
-The function will throw a warning but generally you may want to explicitly
-define the \code{"pre"} and \code{"post"} measurement with arguments \code{pre} and
-\code{post}. In case of more than two measurement identifiers, you have to
-define \code{pre} and \code{post} manually since the function does not know what your
-pre and post intervention measurements are.
-
-If your data is grouped, you can specify the group by referencing the
-grouping variable (see examples below). The analysis is then run for every
-group to compare group differences.
-}
-
-\examples{
-# 1. Within-Group Analysis (Bayesian Default)
-#    Does the intervention group improve more than the MID of 8?
-cs_results_within <- antidepressants |>
-  cs_anchor_group(
-    patient,
-    measurement,
-    mom_di,
-    mid_improvement = 8,
-    pre = "Before",
-    post = "After"
-  )
-
-summary(cs_results_within)
-plot(cs_results_within)
-
-
-# 2. Between-Group Analysis
-#    Compare Intervention vs. Control at post-measurement
-cs_results_between <- antidepressants |>
-  cs_anchor_group(
-    patient,
-    measurement,
-    mom_di,
-    group = condition,
-    effect = "between",
-    post = "After",
-    mid_improvement = 8
-  )
-
-summary(cs_results_between)
-plot(cs_results_between)
-
-
-# 3. Frequentist Analysis (Standard t-test based CI)
-cs_results_freq <- antidepressants |>
-  cs_anchor_group(
-    patient,
-    measurement,
-    mom_di,
-    mid_improvement = 8,
-    pre = "Before",
-    post = "After",
-    bayesian = FALSE
-  )
-}
+}}
 \references{
-Hespanhol, L., Vallio, C. S., Costa, L. M., & Saragiotto, B. T.
+Hespanhol, L., Vallio, C. S., Costa, L. M., & Saragiotto, B. T.
 (2019). Understanding and interpreting confidence and credible intervals
 around effect estimates. Brazilian Journal of Physical Therapy, 23(4),
 290–301. https://doi.org/10.1016/j.bjpt.2018.12.006
