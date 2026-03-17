@@ -265,7 +265,8 @@ cs_anchor.default <- function(
     data = datasets
   )
 
-  class(anchor_results) <- c("tbl_df", "tbl", "data.frame")
+  # SAFELY convert to a generic tibble instead of hard-overwriting classes
+  anchor_results <- tibble::as_tibble(anchor_results)
 
   # Put everything into a list
   output <- list(
