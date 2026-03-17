@@ -131,5 +131,7 @@ globalVariables(unique(c(
   "Median",
   # calc_rci.cs_hlm:
   "sd",
-  "percent"
+  "percent",
+  "models",
+  "tables"
 )))

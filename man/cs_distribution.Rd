@@ -2,9 +2,12 @@
 % Please edit documentation in R/cs_distribution.R
 \name{cs_distribution}
 \alias{cs_distribution}
+\alias{cs_distribution.default}
 \title{Distribution-Based Analysis of Clinical Significance}
 \usage{
-cs_distribution(
+cs_distribution(data, ...)
+
+\method{cs_distribution}{default}(
   data,
   id,
   time,
@@ -16,11 +19,14 @@ cs_distribution(
   reliability_post = NULL,
   better_is = c("lower", "higher"),
   rci_method = c("JT", "GLN", "HLL", "EN", "NK", "HA", "HLM"),
-  significance_level = 0.05
+  significance_level = 0.05,
+  ...
 )
 }
 \arguments{
 \item{data}{A tidy data frame}
+
+\item{...}{Additional arguments passed to methods.}
 
 \item{id}{Participant ID}
 
@@ -81,6 +87,11 @@ error inherent for the used instrument. In this case, a reliable change is
 defined as clinically significant. Several methods for calculating this RCI
 can be chosen.
 }
+\section{Methods (by class)}{
+\itemize{
+\item \code{cs_distribution(default)}: Default method for data frames
+
+}}
 \section{Computational details}{
  From the provided data, a region of change is
 calculated in which an individual change may likely be due to an inherent
@@ -215,13 +226,13 @@ plot(cs_results_hlm)
 }
 \references{
 \itemize{
-\item Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12–19. https://doi.org/10.1037//0022-006X.59.1.12
-\item Hsu, L. M. (1989). Reliable changes in psychotherapy: Taking into account regression toward the mean. Behavioral Assessment, 11(4), 459–467.
-\item Hsu, L. M. (1995). Regression toward the mean associated with measurement error and the identification of improvement and deterioration in psychotherapy. Journal of Consulting and Clinical Psychology, 63(1), 141–144. https://doi.org/10.1037//0022-006x.63.1.141
-\item Speer, D. C. (1992). Clinically significant change: Jacobson and Truax (1991) revisited. Journal of Consulting and Clinical Psychology, 60(3), 402–408. https://doi.org/10.1037/0022-006X.60.3.402
-\item Nunnally, J. C., & Kotsch, W. E. (1983). Studies of individual subjects: Logic and methods of analysis. British Journal of Clinical Psychology, 22(2), 83–93. https://doi.org/10.1111/j.2044-8260.1983.tb00582.x
-\item Hageman, W. J., & Arrindell, W. A. (1999). Establishing clinically significant change: increment of precision and the distinction between individual and group level analysis. Behaviour Research and Therapy, 37(12), 1169–1193. https://doi.org/10.1016/S0005-7967(99)00032-7
-\item Raudenbush, S. W., & Bryk, A. S. (2002). Hierarchical Linear Models - Applications and Data Analysis Methods (2nd ed.). Sage Publications.
+\item Jacobson, N. S., & Truax, P. (1991). Clinical significance: A statistical approach to defining meaningful change in psychotherapy research. Journal of Consulting and Clinical Psychology, 59(1), 12–19. https://doi.org/10.1037//0022-006X.59.1.12
+\item Hsu, L. M. (1989). Reliable changes in psychotherapy: Taking into account regression toward the mean. Behavioral Assessment, 11(4), 459–467.
+\item Hsu, L. M. (1995). Regression toward the mean associated with measurement error and the identification of improvement and deterioration in psychotherapy. Journal of Consulting and Clinical Psychology, 63(1), 141–144. https://doi.org/10.1037//0022-006x.63.1.141
+\item Speer, D. C. (1992). Clinically significant change: Jacobson and Truax (1991) revisited. Journal of Consulting and Clinical Psychology, 60(3), 402–408. https://doi.org/10.1037/0022-006X.60.3.402
+\item Nunnally, J. C., & Kotsch, W. E. (1983). Studies of individual subjects: Logic and methods of analysis. British Journal of Clinical Psychology, 22(2), 83–93. https://doi.org/10.1111/j.2044-8260.1983.tb00582.x
+\item Hageman, W. J., & Arrindell, W. A. (1999). Establishing clinically significant change: increment of precision and the distinction between individual and group level analysis. Behaviour Research and Therapy, 37(12), 1169–1193. https://doi.org/10.1016/S0005-7967(99)00032-7
+\item Raudenbush, S. W., & Bryk, A. S. (2002). Hierarchical Linear Models - Applications and Data Analysis Methods (2nd ed.). Sage Publications.
 }
 }
 \seealso{
