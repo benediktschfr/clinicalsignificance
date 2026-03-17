@@ -1,4 +1,9 @@
 # clinicalsignificance (development version)
+## Breaking changes
+- cs_anchor() is now split into two separate functions, one for the analysis of individual data (`cs_anchor()`) for a classic clinical significance analysis and one function for the group-wise effect analysis (`cs_anchor_group()`)
+
+## Minor improvements and fixes
+- Internally, all main functions have been rewritten as generics to make use of the object orieted system and allow for a more flexible implementation and maintanance of (future) methods
 
 # clinicalsignificance 3.0.0
 ## Breaking changes
