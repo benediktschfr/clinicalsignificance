@@ -1,9 +1,17 @@
 # clinicalsignificance (development version)
 ## Breaking changes
-- cs_anchor() is now split into two separate functions, one for the analysis of individual data (`cs_anchor()`) for a classic clinical significance analysis and one function for the group-wise effect analysis (`cs_anchor_group()`)
+- `cs_anchor()` is now split into two separate functions: one for the analysis of individual data (`cs_anchor()`) for a classic clinical significance analysis, and one function for the group-wise effect analysis (`cs_anchor_group()`).
+
+## New features
+- **Native Sensitivity Analyses:** All main functions (`cs_distribution()`, `cs_statistical()`, `cs_combined()`, `cs_percentage()`, `cs_anchor()`, and `cs_anchor_group()`) now fully support sensitivity analyses. Users can supply vectors of values for parameters like `reliability`, `mid_improvement`, or `m_functional`. The package automatically computes all combinations via a parameter grid.
+- **Smart Sensitivity Outputs:** Added highly optimized `print()` and `summary()` methods for all sensitivity analyses. Instead of overwhelming the user with massive tables, the outputs cleanly summarize how stable the clinical categories are across the tested parameter ranges (e.g., showing Min/Max MIDs for group categories, or Min/Max/Difference in percentages for individual categories).
 
 ## Minor improvements and fixes
-- Internally, all main functions have been rewritten as generics to make use of the object orieted system and allow for a more flexible implementation and maintanance of (future) methods
+- Internally, all main functions have been rewritten as S3 generics. This utilizes R's object-oriented system, allowing for a more robust, flexible implementation and easier maintenance of (future) methods.
+- Improved input validation across all functions using the `checkmate` package. Users now receive clearer, more precise error messages for missing or invalid arguments.
+- Implemented informative console messages via `cli` to guide users (e.g., notifying when a specific method like `JT` or `HLM` ignores a provided `reliability` parameter).
+- Consistent handling of symmetrical thresholds: If deterioration thresholds (like `mid_deterioration` or `pct_deterioration`) are omitted, they now robustly default to their respective improvement counterparts, even within complex sensitivity grids.
+- S3 classes and internal object structures have been unified across all analytical approaches, ensuring a smooth downstream experience (e.g., for plotting).
 
 # clinicalsignificance 3.0.0
 ## Breaking changes
