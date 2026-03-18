@@ -447,7 +447,8 @@ print.cs_statistical <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_statistical_sensitivity <- function(x, ...) {
-  summary_table <- .format_summary_table(x[["summary_table"]])
+  summary_table_agg <- .summarize_sensitivity_table(x[["summary_table"]])
+  summary_table <- .format_summary_table(summary_table_agg)
   cs_method <- x[["method"]]
 
   model_info <- .format_model_info_string(
@@ -548,8 +549,9 @@ summary.cs_statistical <- function(object, ...) {
 #'
 #' summary(cs_results)
 summary.cs_statistical_sensitivity <- function(object, ...) {
+  summary_table_agg <- .summarize_sensitivity_table(object[["summary_table"]])
   summary_table <- .format_summary_table(
-    object[["summary_table"]],
+    summary_table_agg,
     table_title = "-- Results"
   )
 

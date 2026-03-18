@@ -109,20 +109,11 @@
       Approach: Statistical Sensitivity
       Method:   JT
       
-      M Functional | Sd Functional | Reliability |     Category | N | Percent
-      -----------------------------------------------------------------------
-      10           |             2 |             |     Improved | 0 |   0.00%
-      10           |             2 |             |    Unchanged | 1 |  33.33%
-      10           |             2 |             | Deteriorated | 2 |  66.67%
-      10           |             5 |             |     Improved | 0 |   0.00%
-      10           |             5 |             |    Unchanged | 1 |  33.33%
-      10           |             5 |             | Deteriorated | 2 |  66.67%
-      15           |             2 |             |     Improved | 0 |   0.00%
-      15           |             2 |             |    Unchanged | 1 |  33.33%
-      15           |             2 |             | Deteriorated | 2 |  66.67%
-      15           |             5 |             |     Improved | 0 |   0.00%
-      15           |             5 |             |    Unchanged | 1 |  33.33%
-      15           |             5 |             | Deteriorated | 2 |  66.67%
+      Category     |    Min |    Max | Difference
+      -------------------------------------------
+      Improved     |  0.00% |  0.00% |      0.00%
+      Unchanged    | 33.33% | 33.33% |      0.00%
+      Deteriorated | 66.67% | 66.67% |      0.00%
       
 
 ---
@@ -145,19 +136,10 @@
       
       -- Results
       
-      M Functional | Sd Functional | Reliability |     Category | N | Percent
-      -----------------------------------------------------------------------
-      10           |             2 |             |     Improved | 0 |   0.00%
-      10           |             2 |             |    Unchanged | 1 |  33.33%
-      10           |             2 |             | Deteriorated | 2 |  66.67%
-      10           |             5 |             |     Improved | 0 |   0.00%
-      10           |             5 |             |    Unchanged | 1 |  33.33%
-      10           |             5 |             | Deteriorated | 2 |  66.67%
-      15           |             2 |             |     Improved | 0 |   0.00%
-      15           |             2 |             |    Unchanged | 1 |  33.33%
-      15           |             2 |             | Deteriorated | 2 |  66.67%
-      15           |             5 |             |     Improved | 0 |   0.00%
-      15           |             5 |             |    Unchanged | 1 |  33.33%
-      15           |             5 |             | Deteriorated | 2 |  66.67%
+      Category     |    Min |    Max | Difference
+      -------------------------------------------
+      Improved     |  0.00% |  0.00% |      0.00%
+      Unchanged    | 33.33% | 33.33% |      0.00%
+      Deteriorated | 66.67% | 66.67% |      0.00%
       
 
