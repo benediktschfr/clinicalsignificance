@@ -175,10 +175,6 @@ cs_percentage.default <- function(
 
   checkmate::assert_data_frame(data)
 
-  if (is.null(pct_deterioration)) {
-    pct_deterioration <- pct_improvement
-  }
-
   # Prepare the data
   datasets <- .prep_data(
     data = data,
@@ -197,27 +193,33 @@ cs_percentage.default <- function(
   direction <- if (better_is[1] == "lower") -1 else 1
   outcome_name <- deparse(substitute(outcome))
 
+  is_sensitivity <- length(pct_improvement) > 1 || length(pct_deterioration) > 1
+
   # >>> SENSITIVITÄTSANALYSE ODER STANDARD <<<
-  if (length(pct_improvement) > 1) {
-    if (
-      length(pct_deterioration) > 1 &&
-        length(pct_improvement) != length(pct_deterioration)
-    ) {
-      cli::cli_abort(
-        "Lengths of {.arg pct_improvement} and {.arg pct_deterioration} must match."
-      )
-    } else if (length(pct_deterioration) == 1) {
-      pct_deterioration <- rep(pct_deterioration, length(pct_improvement))
+  if (is_sensitivity) {
+    # NULL in NA_real_ umwandeln, damit expand_grid funktioniert
+    pct_det_vec <- if (is.null(pct_deterioration)) {
+      NA_real_
+    } else {
+      pct_deterioration
     }
 
-    results_list <- tibble::tibble(
+    # Erstelle ein Grid aus allen Kombinationen
+    results_list <- tidyr::expand_grid(
       pct_improvement = pct_improvement,
-      pct_deterioration = pct_deterioration
+      pct_deterioration = pct_det_vec
     ) |>
       dplyr::mutate(
-        models = purrr::map2(
+        # Symmetrische Werte auffüllen, falls pct_deterioration = NA
+        pct_deterioration = dplyr::if_else(
+          is.na(pct_deterioration),
           pct_improvement,
-          pct_deterioration,
+          pct_deterioration
+        )
+      ) |>
+      dplyr::mutate(
+        models = purrr::pmap(
+          list(pct_improvement, pct_deterioration),
           function(p_imp, p_det) {
             .core_percentage(
               datasets = datasets,
@@ -251,6 +253,10 @@ cs_percentage.default <- function(
     class(output) <- c("cs_analysis", "cs_percentage_sensitivity", "list")
     return(output)
   } else {
+    if (is.null(pct_deterioration)) {
+      pct_deterioration <- pct_improvement
+    }
+
     return(.core_percentage(
       datasets = datasets,
       pct_improvement = pct_improvement,
@@ -288,7 +294,8 @@ cs_percentage.default <- function(
     data = datasets
   )
 
-  class(pct_results) <- c("tbl_df", "tbl", "data.frame")
+  # SAFELY convert to a generic tibble
+  pct_results <- tibble::as_tibble(pct_results)
 
   # Output list
   output <- list(
@@ -361,7 +368,8 @@ print.cs_percentage <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_percentage_sensitivity <- function(x, ...) {
-  summary_table <- .format_summary_table(x[["summary_table"]])
+  summary_table_agg <- .summarize_sensitivity_table(x[["summary_table"]])
+  summary_table <- .format_summary_table(summary_table_agg)
 
   if (x[["direction"]] == -1) {
     direction <- "Lower"
@@ -459,16 +467,30 @@ summary.cs_percentage <- function(object, ...) {
 #'
 #' summary(cs_results)
 summary.cs_percentage_sensitivity <- function(object, ...) {
-  # Get necessary information from object
-  summary_table <- .format_summary_table(object[["summary_table"]])
+  summary_table_agg <- .summarize_sensitivity_table(object[["summary_table"]])
+  summary_table <- .format_summary_table(summary_table_agg)
 
-  pct_imp_min <- insight::format_percent(min(object[["pct_improvement"]]))
-  pct_imp_max <- insight::format_percent(max(object[["pct_improvement"]]))
-  pct_improvement <- paste0(pct_imp_min, " to ", pct_imp_max)
+  # Helper zur Formatierung der Ranges mit Format_Percent
+  format_range <- function(x) {
+    if (is.null(x)) {
+      return("---")
+    }
+    if (length(x) == 1) {
+      return(insight::format_percent(x))
+    }
+    paste0(
+      insight::format_percent(min(x)),
+      " to ",
+      insight::format_percent(max(x))
+    )
+  }
 
-  pct_det_min <- insight::format_percent(min(object[["pct_deterioration"]]))
-  pct_det_max <- insight::format_percent(max(object[["pct_deterioration"]]))
-  pct_deterioration <- paste0(pct_det_min, " to ", pct_det_max)
+  pct_improvement <- format_range(object[["pct_improvement"]])
+  pct_deterioration <- format_range(object[["pct_deterioration"]])
+
+  if (is.null(object[["pct_deterioration"]])) {
+    pct_deterioration <- paste0(pct_improvement, " (symmetric)")
+  }
 
   if (object[["direction"]] == -1) {
     direction <- "Lower"
@@ -483,8 +505,8 @@ summary.cs_percentage_sensitivity <- function(object, ...) {
   model_info <- .format_model_info_string(
     list(
       Approach = "Percentage-based Sensitivity",
-      "Percentage Improvement" = pct_improvement,
-      "Percentage Deterioration" = pct_deterioration,
+      "Range Percentage Improvement" = pct_improvement,
+      "Range Percentage Deterioration" = pct_deterioration,
       "Better is" = direction,
       "N (original)" = n_original,
       "N (used)" = n_used,

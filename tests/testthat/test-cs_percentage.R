@@ -3,7 +3,7 @@
 # ID 2: 100 -> 90 (10% Reduktion -> Keine Änderung bei 20% Cutoff)
 # ID 3: 100 -> 150 (50% Erhöhung -> Verschlechterung)
 test_data_pct <- tibble::tibble(
-  id = rep(1:3, 2), # <--- Das hier hat gefehlt (Länge 6: 1,2,3,1,2,3)
+  id = rep(1:3, 2),
   time = rep(c(1, 2), each = 3),
   score = c(100, 100, 100, 40, 90, 150),
   group = "Treat"
@@ -87,6 +87,7 @@ test_that("cs_percentage returns correct structure and defaults", {
 })
 
 test_that("cs_percentage print output is stable", {
+  set.seed(123)
   res <- cs_percentage(
     test_data_pct,
     id,
@@ -129,7 +130,7 @@ test_that("cs_percentage handles groups correctly", {
   )
 
   expect_true("group" %in% names(res$summary_table))
-  expect_equal(nrow(res$summary_table), 6) # Three rows for A, three for B
+  expect_equal(nrow(res$summary_table), 6) # 2 Gruppen * 3 Kategorien
 })
 
 test_that("cs_percentage sensitivity analysis works and builds correct class", {
@@ -144,38 +145,26 @@ test_that("cs_percentage sensitivity analysis works and builds correct class", {
   expect_s3_class(res, "cs_percentage_sensitivity")
   expect_s3_class(res, "cs_analysis")
 
-  # We expect 9 rows for summary table, three rows per pct_improvement value
+  # Wir erwarten 3 Modelle * 3 Kategorien = 9 Zeilen in der internen Tabelle
   expect_equal(nrow(res$summary_table), 9)
 })
 
-test_that("cs_percentage sensitivity catches length mismatch", {
-  expect_error(
-    cs_percentage(
-      test_data_pct,
-      id,
-      time,
-      score,
-      pct_improvement = c(0.2, 0.3),
-      pct_deterioration = c(0.2, 0.3, 0.4)
-    ),
-    "Lengths of `pct_improvement` and `pct_deterioration` must match"
-  )
-})
-
-test_that("cs_percentage sensitivity recycles pct_deterioration correctly", {
+test_that("cs_percentage sensitivity analysis recycles correctly with expand_grid", {
   res <- cs_percentage(
     test_data_pct,
     id,
     time,
     score,
-    pct_improvement = c(0.2, 0.3, 0.4),
-    pct_deterioration = 0.5 # Skalar sollte auf Länge 3 recycled werden
+    pct_improvement = c(0.2, 0.3),
+    pct_deterioration = c(0.4, 0.5)
   )
 
-  expect_equal(res$pct_deterioration, c(0.5, 0.5, 0.5))
+  # Grid: 2 * 2 = 4 Modelle. 4 * 3 Kategorien = 12 Zeilen
+  expect_equal(nrow(res$summary_table), 12)
 })
 
 test_that("cs_percentage_sensitivity print and summary outputs are stable", {
+  set.seed(123)
   res <- cs_percentage(
     test_data_pct,
     id,
