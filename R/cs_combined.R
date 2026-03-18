@@ -577,36 +577,7 @@ print.cs_combined <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_combined_sensitivity <- function(x, ...) {
-  has_group <- "group" %in% names(x[["summary_table"]])
-
-  # Gruppieren und aggregieren, um nur Min, Max und Differenz auszugeben
-  if (has_group) {
-    summary_table_agg <- x[["summary_table"]] |>
-      dplyr::group_by(group, category)
-  } else {
-    summary_table_agg <- x[["summary_table"]] |>
-      dplyr::group_by(category)
-  }
-
-  summary_table_agg <- summary_table_agg |>
-    dplyr::summarise(
-      Min = min(percent, na.rm = TRUE),
-      Max = max(percent, na.rm = TRUE),
-      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      Min = insight::format_percent(Min),
-      Max = insight::format_percent(Max),
-      Difference = insight::format_percent(Difference)
-    ) |>
-    dplyr::rename(Category = category)
-
-  if (has_group) {
-    summary_table_agg <- summary_table_agg |>
-      dplyr::rename(Group = group)
-  }
-
+  summary_table_agg <- .summarize_sensitivity_table(x[["summary_table"]])
   summary_table <- .format_summary_table(summary_table_agg)
 
   cs_method <- x[["method"]]
@@ -729,36 +700,7 @@ summary.cs_combined <- function(object, ...) {
 #' @return No return value, called for side effects only
 #' @export
 summary.cs_combined_sensitivity <- function(object, ...) {
-  has_group <- "group" %in% names(object[["summary_table"]])
-
-  # Gruppieren und aggregieren für die kompakte Summary
-  if (has_group) {
-    summary_table_agg <- object[["summary_table"]] |>
-      dplyr::group_by(group, category)
-  } else {
-    summary_table_agg <- object[["summary_table"]] |>
-      dplyr::group_by(category)
-  }
-
-  summary_table_agg <- summary_table_agg |>
-    dplyr::summarise(
-      Min = min(percent, na.rm = TRUE),
-      Max = max(percent, na.rm = TRUE),
-      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      Min = insight::format_percent(Min),
-      Max = insight::format_percent(Max),
-      Difference = insight::format_percent(Difference)
-    ) |>
-    dplyr::rename(Category = category)
-
-  if (has_group) {
-    summary_table_agg <- summary_table_agg |>
-      dplyr::rename(Group = group)
-  }
-
+  summary_table_agg <- .summarize_sensitivity_table(object[["summary_table"]])
   summary_table <- .format_summary_table(
     summary_table_agg,
     table_title = "-- Results"
