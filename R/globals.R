@@ -133,5 +133,10 @@ globalVariables(unique(c(
   "sd",
   "percent",
   "models",
-  "tables"
+  "tables",
+  "Min",
+  "Max",
+  "mid_improvement",
+  "Difference",
+  "res"
 )))

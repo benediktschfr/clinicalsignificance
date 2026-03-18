@@ -59,7 +59,7 @@ instrument? Available are
 \item \code{"higher"} (higher outcome scores are desirable)
 }}
 
-\item{effect}{String, if \code{target = "group"}, specify which effect should be
+\item{effect}{String, specify which effect should be
 calculated. Available are
 \itemize{
 \item \code{"within"} (the default), which yields the mean pre-post intervention
@@ -70,7 +70,7 @@ argument at the specified measurement supplied with the \code{post}- argument
 The reference group may be supplied with \code{reference_group}
 }}
 
-\item{bayesian}{Logical, only relevant if \code{target = "group"}. Indicates if a
+\item{bayesian}{Logical. Indicates if a
 Bayesian estimate (i.e., the median) of group differences with a credible
 interval should be calculated (if set to \code{TRUE}, the default) or a
 frequentist mean difference with confidence interval (if set to \code{FALSE})}
@@ -80,20 +80,12 @@ prior distribution. See the documentation for \code{rscale} in
 \code{\link[BayesFactor:ttestBF]{BayesFactor::ttestBF()}} for details.}
 
 \item{reference_group}{Specify the reference group to which all subsequent
-groups are compared against if \code{target = "group"} and \code{effect = "within"}
+groups are compared against if \code{effect = "within"}
 (optional). Otherwise, the first distinct group is chosen based on
 alphabetical, numerical or factor ordering.}
 
 \item{ci_level}{Numeric, define the credible or confidence interval level.
 The default is 0.95 for a 95\%-CI.}
-
-\item{target}{String, whether an individual or group analysis should be
-calculated. Available are
-\itemize{
-\item \code{"individual"} (the default) for which every individual participant is
-evaluated
-\item \code{"group"} for which only the group wise effect is evaluated
-}}
 }
 \value{
 An S3 object of class \code{cs_analysis} and \code{cs_anchor}

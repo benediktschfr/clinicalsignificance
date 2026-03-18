@@ -6,12 +6,7 @@
 #' @param mid_deterioration Numeric, change that indicates a clinically
 #'   significant deterioration (optional). If `mid_deterioration` is not
 #'   provided, it will be assumed to be equal to `mid_improvement`
-#' @param target String, whether an individual or group analysis should be
-#'   calculated. Available are
-#'   - `"individual"` (the default) for which every individual participant is
-#'   evaluated
-#'   - `"group"` for which only the group wise effect is evaluated
-#' @param effect String, if `target = "group"`, specify which effect should be
+#' @param effect String, specify which effect should be
 #'   calculated. Available are
 #'   - `"within"` (the default), which yields the mean pre-post intervention
 #'   difference with associated confidence intervals
@@ -19,7 +14,7 @@
 #'   confidence intervals between two or more groups specified with the `group`
 #'   argument at the specified measurement supplied with the `post`- argument
 #'   The reference group may be supplied with `reference_group`
-#' @param bayesian Logical, only relevant if `target = "group"`. Indicates if a
+#' @param bayesian Logical. Indicates if a
 #'   Bayesian estimate (i.e., the median) of group differences with a credible
 #'   interval should be calculated (if set to `TRUE`, the default) or a
 #'   frequentist mean difference with confidence interval (if set to `FALSE`)
@@ -27,7 +22,7 @@
 #'   prior distribution. See the documentation for `rscale` in
 #'   [BayesFactor::ttestBF()] for details.
 #' @param reference_group Specify the reference group to which all subsequent
-#'   groups are compared against if `target = "group"` and `effect = "within"`
+#'   groups are compared against if `effect = "within"`
 #'   (optional). Otherwise, the first distinct group is chosen based on
 #'   alphabetical, numerical or factor ordering.
 #' @param ci_level Numeric, define the credible or confidence interval level.

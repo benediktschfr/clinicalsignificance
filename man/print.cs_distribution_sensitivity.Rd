@@ -2,7 +2,7 @@
 % Please edit documentation in R/cs_distribution.R
 \name{print.cs_distribution_sensitivity}
 \alias{print.cs_distribution_sensitivity}
-\title{Print Method for the Distribution-Based Approach}
+\title{Print Method for the Distribution-Based Approach Sensitivity}
 \usage{
 \method{print}{cs_distribution_sensitivity}(x, ...)
 }
@@ -15,5 +15,5 @@
 No return value, called for side effects
 }
 \description{
-Print Method for the Distribution-Based Approach
+Print Method for the Distribution-Based Approach Sensitivity
 }
