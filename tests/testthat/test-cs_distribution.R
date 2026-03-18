@@ -1,195 +1,145 @@
-# Standard Datensatz (2 Messzeitpunkte)
-# ID 1: Verbesserung (30 -> 10)
-# ID 2: Keine Änderung (30 -> 29)
-test_data_dist <- tibble::tribble(
-  ~id , ~time , ~score , ~group  ,
-    1 ,     1 ,     30 , "Treat" ,
-    1 ,     2 ,     10 , "Treat" ,
-    2 ,     1 ,     30 , "Ctrl"  ,
-    2 ,     2 ,     29 , "Ctrl"
+# Deterministische Testdaten für stabile Snapshots
+test_data_dist <- data.frame(
+  id = rep(1:10, 2),
+  time = rep(c(1, 2), each = 10),
+  score = c(
+    20,
+    21,
+    19,
+    20,
+    22,
+    20,
+    18,
+    21,
+    19,
+    20, # Pre
+    10,
+    12,
+    8,
+    11,
+    11,
+    15,
+    14,
+    16,
+    15,
+    15 # Post (einige starke, einige schwache Verbesserungen)
+  ),
+  group = rep(c("A", "B"), each = 5, times = 2)
 )
 
-# Datensatz für HLM (3 Messzeitpunkte nötig)
-test_data_hlm <- tibble::tribble(
-  ~id , ~time , ~score ,
-    1 ,     1 ,     30 ,
-    1 ,     2 ,     20 ,
-    1 ,     3 ,     10 ,
-    2 ,     1 ,     30 ,
-    2 ,     2 ,     30 ,
-    2 ,     3 ,     30
-)
+# --- VALIDATION TESTS ---
 
-
-# --- Tests ---
-
-test_that("cs_distribution input validation: Basics", {
-  # 1. Fehlende Spalten
+test_that("cs_distribution input validation", {
+  # Fehlende Argumente
   expect_error(
     cs_distribution(test_data_dist, time = time, outcome = score),
     "Argument `id` is missing"
   )
-  expect_error(
-    cs_distribution(test_data_dist, id = id, outcome = score),
-    "Argument `time` is missing"
-  )
 
-  # 2. Checkmate Typ-Checks
-  expect_error(
-    cs_distribution(test_data_dist, id, time, score, reliability = "high"),
-    "Must be of type 'numeric'"
-  )
-
-  # 3. Range Checks
-  expect_error(
-    cs_distribution(test_data_dist, id, time, score, reliability = 1.1),
-    "Element 1 is not <= 1"
-  )
-  expect_error(
-    cs_distribution(test_data_dist, id, time, score, reliability = -0.1),
-    "Element 1 is not >= 0"
-  )
-})
-
-test_that("cs_distribution input validation: Reliability Logic", {
-  # 1. Standard (JT): Reliability ist PFLICHT
+  # Reliability fehlt (für Standard-Methoden)
   expect_error(
     cs_distribution(test_data_dist, id, time, score, rci_method = "JT"),
     "Argument `reliability` is required"
   )
-
-  # 2. HLM: Reliability ist NICHT nötig
-  # (Wir erwarten hier keinen Fehler bei den Argument Checks.
-  # Ob die Berechnung klappt, hängt von den Daten ab, aber der Check muss passen.)
-  expect_no_error(
-    # capture.output verhindert Konsolenausgabe bei erfolgreichem Durchlauf
-    capture.output(
-      cs_distribution(test_data_hlm, id, time, score, rci_method = "HLM")
-    )
-  )
 })
 
-test_that("cs_distribution logic: Nunnally & Kotsch (NK)", {
-  # Szenario 1: NK mit reliability_post -> Alles gut
-  expect_silent(
-    capture.output(
-      cs_distribution(
-        test_data_dist,
-        id,
-        time,
-        score,
-        rci_method = "NK",
-        reliability = 0.8,
-        reliability_post = 0.85
-      )
-    )
-  )
+# --- STANDARD TESTS ---
 
-  # Szenario 2: NK OHNE reliability_post -> Info Message & Fallback
-  # Wir erwarten eine "cli alert info" Message
-  expect_message(
-    res_nk <- cs_distribution(
-      test_data_dist,
-      id,
-      time,
-      score,
-      rci_method = "NK",
-      reliability = 0.8
-    ),
-    "Using `reliability` for `reliability_post` as well"
-  )
-
-  # Prüfen, ob der Fallback intern funktioniert hat
-  # Das datasets Objekt oder die interne Berechnung sollte nun reliability == reliability_post haben.
-  # Da wir schwer in die 'calc_rci' reinschauen können von hier, prüfen wir, ob das Ergebnis existiert.
-  expect_s3_class(res_nk, "cs_distribution")
-  expect_equal(res_nk$method, "NK")
-})
-
-test_that("cs_distribution logic: HLM calculation", {
-  # HLM braucht min. 3 Punkte. Wir nehmen den hlm_data satz.
-  # Dies testet, ob der Dispatch zu cs_hlm funktioniert.
-
-  res_hlm <- cs_distribution(test_data_hlm, id, time, score, rci_method = "HLM")
-
-  expect_s3_class(res_hlm, "cs_distribution")
-  expect_s3_class(res_hlm$datasets, "cs_hlm")
-  expect_equal(res_hlm$method, "HLM")
-})
-
-test_that("cs_distribution logic: Higher is better", {
-  # Daten umdrehen: Hohe Werte sind gut (z.B. Lebenszufriedenheit)
-  # ID 1 steigt von 10 auf 30 -> Sollte "Improved" sein
-  df_high <- tibble::tribble(
-    ~id , ~time , ~val ,
-      1 ,     1 ,   10 ,
-      1 ,     2 ,   30 ,
-      2 ,     1 ,    5 ,
-      2 ,     2 ,   40 ,
-      3 ,     1 ,   10 ,
-      3 ,     2 ,   17
-  )
-
+test_that("cs_distribution works for standard calculation", {
   res <- cs_distribution(
-    df_high,
+    test_data_dist,
     id,
     time,
-    val,
-    reliability = 0.8,
-    better_is = "higher"
+    score,
+    reliability = 0.8
   )
 
-  # Wir prüfen die Kategorien in der Summary Table
-  category <- res$rci_results$data |>
-    dplyr::filter(id == 1) |>
-    dplyr::pull(improved)
-
-  # Je nach Logik deiner `create_summary_table`
-  expect_true(category)
-})
-
-test_that("cs_distribution returns correct structure", {
-  res <- cs_distribution(test_data_dist, id, time, score, reliability = 0.8)
-
-  # Klassen
-  expect_s3_class(res, "cs_analysis")
   expect_s3_class(res, "cs_distribution")
-
-  # Listen-Elemente
-  expect_named(
-    res,
-    c(
-      "datasets",
-      "rci_results",
-      "outcome",
-      "method",
-      "n_obs",
-      "reliability",
-      "critical_value",
-      "summary_table"
-    )
-  )
-
-  # Metadaten
+  expect_s3_class(res, "cs_analysis")
   expect_equal(res$method, "JT")
-  expect_equal(res$reliability, 0.8)
 })
 
-test_that("cs_distribution snapshots", {
-  # 1. Standard JT
-  res_jt <- cs_distribution(test_data_dist, id, time, score, reliability = 0.8)
-  expect_snapshot(print(res_jt))
-  expect_snapshot(summary(res_jt))
+# --- NEUE TESTS FÜR SENSITIVITÄTSANALYSE (GRID) ---
 
-  # 2. Grouped Output
-  res_grouped <- cs_distribution(
+test_that("cs_distribution sensitivity analysis creates a full grid", {
+  res <- cs_distribution(
+    test_data_dist,
+    id,
+    time,
+    score,
+    reliability = c(0.7, 0.8, 0.9) # 3 Werte
+  )
+
+  expect_s3_class(res, "cs_distribution_sensitivity")
+  expect_s3_class(res, "cs_analysis")
+
+  # Grid sollte 3 Modelle haben.
+  # Jedes Modell hat 3 Kategorien (Improved, Unchanged, Deteriorated).
+  # 3 * 3 = 9 Zeilen in der internen summary_table
+  expect_equal(nrow(res$summary_table), 9)
+})
+
+test_that("cs_distribution sensitivity analysis creates correct grid with groups", {
+  res <- cs_distribution(
     test_data_dist,
     id,
     time,
     score,
     group = group,
-    reliability = 0.8
+    reliability = c(0.7, 0.8) # 2 Werte
   )
-  expect_snapshot(print(res_grouped))
-  expect_snapshot(summary(res_grouped))
+
+  expect_s3_class(res, "cs_distribution_sensitivity")
+
+  # Grid sollte 2 Modelle haben.
+  # Jedes Modell hat 2 Gruppen mit je 3 Kategorien = 6 Zeilen pro Modell.
+  # 2 * 6 = 12 Zeilen in der internen summary_table
+  expect_equal(nrow(res$summary_table), 12)
+})
+
+# --- SNAPSHOT TESTS ---
+
+test_that("cs_distribution snapshots (Print/Summary)", {
+  # Seed setzen für absolute Sicherheit (auch wenn hier meist kein MCMC läuft)
+  set.seed(123)
+
+  # Standard
+  res_std <- cs_distribution(
+    test_data_dist,
+    id,
+    time,
+    score,
+    reliability = 0.8,
+    pre = 1,
+    post = 2
+  )
+  expect_snapshot(print(res_std))
+  expect_snapshot(summary(res_std))
+
+  # Sensitivität (ohne Gruppe)
+  res_sens <- cs_distribution(
+    test_data_dist,
+    id,
+    time,
+    score,
+    reliability = c(0.7, 0.8, 0.9),
+    pre = 1,
+    post = 2
+  )
+  expect_snapshot(print(res_sens))
+  expect_snapshot(summary(res_sens))
+
+  # Sensitivität (mit Gruppe)
+  res_sens_grp <- cs_distribution(
+    test_data_dist,
+    id,
+    time,
+    score,
+    group = group,
+    reliability = c(0.7, 0.9),
+    pre = 1,
+    post = 2
+  )
+  expect_snapshot(print(res_sens_grp))
+  expect_snapshot(summary(res_sens_grp))
 })

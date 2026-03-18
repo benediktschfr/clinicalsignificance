@@ -1,7 +1,7 @@
-# cs_distribution snapshots
+# cs_distribution snapshots (Print/Summary)
 
     Code
-      print(res_jt)
+      print(res_std)
     Output
       
       ---- Clinical Significance Results ----
@@ -9,80 +9,121 @@
       Approach:   Distribution-based
       RCI Method: JT
       
-      Category     | N | Percent
-      --------------------------
-      Improved     | 2 | 100.00%
-      Unchanged    | 0 |   0.00%
-      Deteriorated | 0 |   0.00%
+      Category     |  N | Percent
+      ---------------------------
+      Improved     | 10 | 100.00%
+      Unchanged    |  0 |   0.00%
+      Deteriorated |  0 |   0.00%
       
 
 ---
 
     Code
-      summary(res_jt)
+      summary(res_std)
     Output
       
       ---- Clinical Significance Results ----
       
       Approach:     Distribution-based
       RCI Method:   JT
-      N (original): 2
-      N (used):     2
+      N (original): 10
+      N (used):     10
       Percent used: 100.00%
       Outcome:      score
       Reliability:  0.8
       
-      Category     | N | Percent
-      --------------------------
-      Improved     | 2 | 100.00%
-      Unchanged    | 0 |   0.00%
-      Deteriorated | 0 |   0.00%
+      Category     |  N | Percent
+      ---------------------------
+      Improved     | 10 | 100.00%
+      Unchanged    |  0 |   0.00%
+      Deteriorated |  0 |   0.00%
       
 
 ---
 
     Code
-      print(res_grouped)
+      print(res_sens)
     Output
       
       ---- Clinical Significance Results ----
       
-      Approach:   Distribution-based
+      Approach:   Distribution-based Sensitivity
       RCI Method: JT
       
-      Group |     Category | N | Percent | Percent by Group
-      -----------------------------------------------------
-      Ctrl  |     Improved | 1 |  50.00% |          100.00%
-      Ctrl  |    Unchanged | 0 |   0.00% |            0.00%
-      Ctrl  | Deteriorated | 0 |   0.00% |            0.00%
-      Treat |     Improved | 1 |  50.00% |          100.00%
-      Treat |    Unchanged | 0 |   0.00% |            0.00%
-      Treat | Deteriorated | 0 |   0.00% |            0.00%
+      Category     |     Min |     Max | Difference
+      ---------------------------------------------
+      Improved     | 100.00% | 100.00% |      0.00%
+      Unchanged    |   0.00% |   0.00% |      0.00%
+      Deteriorated |   0.00% |   0.00% |      0.00%
       
 
 ---
 
     Code
-      summary(res_grouped)
+      summary(res_sens)
     Output
       
       ---- Clinical Significance Results ----
       
-      Approach:     Distribution-based
+      Approach:     Distribution-based Sensitivity
       RCI Method:   JT
-      N (original): 2
-      N (used):     2
+      N (original): 10
+      N (used):     10
       Percent used: 100.00%
       Outcome:      score
-      Reliability:  0.8
+      Reliability:  0.7 to 0.9
       
-      Group |     Category | N | Percent | Percent by Group
-      -----------------------------------------------------
-      Ctrl  |     Improved | 1 |  50.00% |          100.00%
-      Ctrl  |    Unchanged | 0 |   0.00% |            0.00%
-      Ctrl  | Deteriorated | 0 |   0.00% |            0.00%
-      Treat |     Improved | 1 |  50.00% |          100.00%
-      Treat |    Unchanged | 0 |   0.00% |            0.00%
-      Treat | Deteriorated | 0 |   0.00% |            0.00%
+      Category     |     Min |     Max | Difference
+      ---------------------------------------------
+      Improved     | 100.00% | 100.00% |      0.00%
+      Unchanged    |   0.00% |   0.00% |      0.00%
+      Deteriorated |   0.00% |   0.00% |      0.00%
+      
+
+---
+
+    Code
+      print(res_sens_grp)
+    Output
+      
+      ---- Clinical Significance Results ----
+      
+      Approach:   Distribution-based Sensitivity
+      RCI Method: JT
+      
+      Group |     Category |    Min |    Max | Difference
+      ---------------------------------------------------
+      A     |     Improved | 50.00% | 50.00% |      0.00%
+      A     |    Unchanged |  0.00% |  0.00% |      0.00%
+      A     | Deteriorated |  0.00% |  0.00% |      0.00%
+      B     |     Improved | 50.00% | 50.00% |      0.00%
+      B     |    Unchanged |  0.00% |  0.00% |      0.00%
+      B     | Deteriorated |  0.00% |  0.00% |      0.00%
+      
+
+---
+
+    Code
+      summary(res_sens_grp)
+    Output
+      
+      ---- Clinical Significance Results ----
+      
+      Approach:     Distribution-based Sensitivity
+      RCI Method:   JT
+      N (original): 10
+      N (used):     10
+      Percent used: 100.00%
+      Outcome:      score
+      Reliability:  0.7 to 0.9
+      
+      Group |     Category |    Min |    Max | Difference
+      ---------------------------------------------------
+      A     |     Improved | 50.00% | 50.00% |      0.00%
+      A     |    Unchanged |  0.00% |  0.00% |      0.00%
+      A     | Deteriorated |  0.00% |  0.00% |      0.00%
+      B     |     Improved | 50.00% | 50.00% |      0.00%
+      B     |    Unchanged |  0.00% |  0.00% |      0.00%
+      B     | Deteriorated |  0.00% |  0.00% |      0.00%
       
 

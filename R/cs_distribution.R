@@ -472,7 +472,7 @@ print.cs_distribution <- function(x, ...) {
   )
 }
 
-#' Print Method for the Distribution-Based Approach
+#' Print Method for the Distribution-Based Approach Sensitivity
 #'
 #' @param x An object of class `cs_distribution_sensitivity`
 #' @param ... Additional arguments
@@ -480,14 +480,43 @@ print.cs_distribution <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_distribution_sensitivity <- function(x, ...) {
+  has_group <- "group" %in% names(x[["summary_table"]])
+
+  if (has_group) {
+    summary_table_agg <- x[["summary_table"]] |>
+      dplyr::group_by(group, category)
+  } else {
+    summary_table_agg <- x[["summary_table"]] |>
+      dplyr::group_by(category)
+  }
+
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Min = min(percent, na.rm = TRUE),
+      Max = max(percent, na.rm = TRUE),
+      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Min = insight::format_percent(Min),
+      Max = insight::format_percent(Max),
+      Difference = insight::format_percent(Difference)
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
+  summary_table <- .format_summary_table(summary_table_agg)
+
   model_info <- .format_model_info_string(
     list(
       Approach = "Distribution-based Sensitivity",
       "RCI Method" = x[["method"]]
     )
   )
-
-  summary_table <- .format_summary_table(x[["summary_table"]])
 
   # Print output
   .print_strings(
@@ -570,7 +599,37 @@ summary.cs_distribution <- function(object, ...) {
 summary.cs_distribution_sensitivity <- function(object, ...) {
   # browser()
   # Get necessary information from object
-  summary_table <- .format_summary_table(object[["summary_table"]])
+  has_group <- "group" %in% names(object[["summary_table"]])
+
+  if (has_group) {
+    summary_table_agg <- object[["summary_table"]] |>
+      dplyr::group_by(group, category)
+  } else {
+    summary_table_agg <- object[["summary_table"]] |>
+      dplyr::group_by(category)
+  }
+
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Min = min(percent, na.rm = TRUE),
+      Max = max(percent, na.rm = TRUE),
+      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Min = insight::format_percent(Min),
+      Max = insight::format_percent(Max),
+      Difference = insight::format_percent(Difference)
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
+  summary_table <- .format_summary_table(summary_table_agg)
+
   n_original <- cs_get_n(object, "original")[[1]]
   n_used <- cs_get_n(object, "used")[[1]]
   rci_method <- object[["method"]]
