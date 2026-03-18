@@ -219,7 +219,8 @@ cs_combined.default <- function(
       cli::cli_alert_info(
         "Using {.arg reliability} for {.arg reliability_post} as well."
       )
-      reliability_post <- reliability
+      # Die direkte Zuweisung (reliability_post <- reliability) wurde hier entfernt,
+      # um die Vektor-Längen für expand_grid nicht zu manipulieren.
     }
   }
 
@@ -241,8 +242,8 @@ cs_combined.default <- function(
   if (use_anchor) {
     class(datasets) <- c("cs_anchor_individual", class(datasets))
     cs_method <- "CWB"
-    # Symmetric Default for Non-Grid
-    if (is.null(mid_deterioration)) mid_deterioration <- mid_improvement
+    # Die direkte Zuweisung von mid_deterioration wurde hier entfernt,
+    # um das expand_grid der Sensitivitätsanalyse sauber zu halten.
   } else {
     class(datasets) <- c(paste0("cs_", tolower(cs_method)), class(datasets))
   }
@@ -260,7 +261,7 @@ cs_combined.default <- function(
 
   # >>> SENSITIVITÄTSANALYSE ODER STANDARD <<<
   if (is_sensitivity) {
-    # NULL in NA_real_ umwandeln, damit expand_grid funktioniert
+    # NULL in NA_real_ umwandeln, damit expand_grid funktioniert und keine Fehler wirft
     mid_imp_vec <- if (is.null(mid_improvement)) NA_real_ else mid_improvement
     mid_det_vec <- if (is.null(mid_deterioration)) {
       NA_real_
@@ -363,6 +364,14 @@ cs_combined.default <- function(
     class(output) <- c("cs_analysis", "cs_combined_sensitivity", "list")
     return(output)
   } else {
+    # Default Fallback für Einzelanalysen (nicht-Grid)
+    if (is.null(mid_deterioration)) {
+      mid_deterioration <- mid_improvement
+    }
+    if (cs_method == "NK" && is.null(reliability_post)) {
+      reliability_post <- reliability
+    }
+
     return(.core_combined(
       datasets = datasets,
       mid_improvement = mid_improvement,
@@ -568,8 +577,37 @@ print.cs_combined <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_combined_sensitivity <- function(x, ...) {
-  # Bei Sensitivity haben wir die individual_level_summary direkt unnested
-  summary_table <- .format_summary_table(x[["summary_table"]])
+  has_group <- "group" %in% names(x[["summary_table"]])
+
+  # Gruppieren und aggregieren, um nur Min, Max und Differenz auszugeben
+  if (has_group) {
+    summary_table_agg <- x[["summary_table"]] |>
+      dplyr::group_by(group, category)
+  } else {
+    summary_table_agg <- x[["summary_table"]] |>
+      dplyr::group_by(category)
+  }
+
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Min = min(percent, na.rm = TRUE),
+      Max = max(percent, na.rm = TRUE),
+      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Min = insight::format_percent(Min),
+      Max = insight::format_percent(Max),
+      Difference = insight::format_percent(Difference)
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
+  summary_table <- .format_summary_table(summary_table_agg)
 
   cs_method <- x[["method"]]
   direction <- if (x[["direction"]] == -1) "Lower" else "Higher"
@@ -691,8 +729,38 @@ summary.cs_combined <- function(object, ...) {
 #' @return No return value, called for side effects only
 #' @export
 summary.cs_combined_sensitivity <- function(object, ...) {
+  has_group <- "group" %in% names(object[["summary_table"]])
+
+  # Gruppieren und aggregieren für die kompakte Summary
+  if (has_group) {
+    summary_table_agg <- object[["summary_table"]] |>
+      dplyr::group_by(group, category)
+  } else {
+    summary_table_agg <- object[["summary_table"]] |>
+      dplyr::group_by(category)
+  }
+
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Min = min(percent, na.rm = TRUE),
+      Max = max(percent, na.rm = TRUE),
+      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Min = insight::format_percent(Min),
+      Max = insight::format_percent(Max),
+      Difference = insight::format_percent(Difference)
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
   summary_table <- .format_summary_table(
-    object[["summary_table"]],
+    summary_table_agg,
     table_title = "-- Results"
   )
 
