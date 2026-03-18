@@ -9,14 +9,11 @@
       Approach:  Anchor-based Sensitivity
       Better is: Higher
       
-      Mid Improvement | Mid Deterioration |     Category | N | Percent
-      ----------------------------------------------------------------
-      2               |                 2 |     Improved | 2 |  66.67%
-      2               |                 2 |    Unchanged | 1 |  33.33%
-      2               |                 2 | Deteriorated | 0 |   0.00%
-      5               |                 5 |     Improved | 2 |  66.67%
-      5               |                 5 |    Unchanged | 1 |  33.33%
-      5               |                 5 | Deteriorated | 0 |   0.00%
+      Category     |    Min |    Max | Difference
+      -------------------------------------------
+      Improved     | 66.67% | 66.67% |      0.00%
+      Unchanged    | 33.33% | 33.33% |      0.00%
+      Deteriorated |  0.00% |  0.00% |      0.00%
       
 
 ---
@@ -36,13 +33,10 @@
       Better is:               Higher
       Outcome:                 score
       
-      Mid Improvement | Mid Deterioration |     Category | N | Percent
-      ----------------------------------------------------------------
-      2               |                 2 |     Improved | 2 |  66.67%
-      2               |                 2 |    Unchanged | 1 |  33.33%
-      2               |                 2 | Deteriorated | 0 |   0.00%
-      5               |                 5 |     Improved | 2 |  66.67%
-      5               |                 5 |    Unchanged | 1 |  33.33%
-      5               |                 5 | Deteriorated | 0 |   0.00%
+      Category     |    Min |    Max | Difference
+      -------------------------------------------
+      Improved     | 66.67% | 66.67% |      0.00%
+      Unchanged    | 33.33% | 33.33% |      0.00%
+      Deteriorated |  0.00% |  0.00% |      0.00%
       
 
