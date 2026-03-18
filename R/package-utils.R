@@ -1,3 +1,42 @@
+#' Summarize Sensitivity Analysis Table
+#'
+#' @param summary_table The raw summary table from a sensitivity analysis
+#' @return A summarized data frame containing Min, Max, and Difference
+#' @noRd
+.summarize_sensitivity_table <- function(summary_table) {
+  has_group <- "group" %in% names(summary_table)
+
+  if (has_group) {
+    summary_table_agg <- summary_table |>
+      dplyr::group_by(group, category)
+  } else {
+    summary_table_agg <- summary_table |>
+      dplyr::group_by(category)
+  }
+
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Min = min(percent, na.rm = TRUE),
+      Max = max(percent, na.rm = TRUE),
+      Difference = max(percent, na.rm = TRUE) - min(percent, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      Min = insight::format_percent(Min),
+      Max = insight::format_percent(Max),
+      Difference = insight::format_percent(Difference)
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
+  summary_table_agg
+}
+
+
 #' Format a Summary Table for Printing
 #'
 #' @description
