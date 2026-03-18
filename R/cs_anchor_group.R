@@ -378,36 +378,44 @@ print.cs_anchor_group_within <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_anchor_group_within_sensitivity <- function(x, ...) {
-  summary_table_formatted <- x[["anchor_results"]] |>
-    dplyr::rename(
-      "MID Improvement" = "mid_improvement",
-      "MID Deterioration" = "mid_deterioration",
-      "CI-Level" = "ci",
-      "[Lower" = "lower",
-      "Upper]" = "upper",
-      "Category" = "category"
-    )
+  has_group <- "group" %in% names(x[["anchor_results"]])
 
-  if (.has_group(summary_table_formatted)) {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Group" = "group"
-    )
-  }
-
-  if (!x[["bayesian"]]) {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Mean Difference" = "difference"
-    )
+  if (has_group) {
+    summary_table_agg <- x[["anchor_results"]] |>
+      dplyr::group_by(group, category)
   } else {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Median Difference" = "difference"
-    )
+    summary_table_agg <- x[["anchor_results"]] |>
+      dplyr::group_by(category)
   }
 
-  summary_table <- .format_summary_table(summary_table_formatted)
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Difference = round(dplyr::first(difference), 2),
+      `Min. MID` = min(mid_improvement, na.rm = TRUE),
+      `Max. MID` = max(mid_improvement, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      category = as.character(category),
+      category = dplyr::if_else(
+        is.na(category) | trimws(category) == "",
+        "Point estimate equals MID",
+        category
+      )
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
+  diff_name <- if (!x[["bayesian"]]) "Mean Difference" else "Median Difference"
+  names(summary_table_agg)[
+    names(summary_table_agg) == "Difference"
+  ] <- diff_name
+
+  summary_table <- .format_summary_table(summary_table_agg)
   direction <- if (x[["direction"]] == -1) "Lower" else "Higher"
 
   model_info <- .format_model_info_string(
@@ -419,7 +427,6 @@ print.cs_anchor_group_within_sensitivity <- function(x, ...) {
 
   .print_strings(model_info, summary_table)
 }
-
 
 #' Print Method for the Anchor-Based Approach for Groups (Between)
 #'
@@ -477,33 +484,34 @@ print.cs_anchor_group_between <- function(x, ...) {
 #' @return No return value, called for side effects
 #' @export
 print.cs_anchor_group_between_sensitivity <- function(x, ...) {
-  summary_table_formatted <- x[["anchor_results"]] |>
+  summary_table_agg <- x[["anchor_results"]] |>
+    dplyr::group_by(reference, comparison, category) |>
+    dplyr::summarise(
+      Difference = round(dplyr::first(difference), 2),
+      `Min. MID` = min(mid_improvement, na.rm = TRUE),
+      `Max. MID` = max(mid_improvement, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      category = as.character(category),
+      category = dplyr::if_else(
+        is.na(category) | trimws(category) == "",
+        "Point estimate equals MID",
+        category
+      )
+    ) |>
     dplyr::rename(
-      "MID Improvement" = "mid_improvement",
-      "MID Deterioration" = "mid_deterioration",
-      "Group 1" = "reference",
-      "Group 2" = "comparison",
-      "CI-Level" = "ci",
-      "[Lower" = "lower",
-      "Upper]" = "upper",
-      "Category" = "category",
-      "n (1)" = "n_reference",
-      "n (2)" = "n_comparison"
+      "Group 1" = reference,
+      "Group 2" = comparison,
+      Category = category
     )
 
-  if (!x[["bayesian"]]) {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Mean Difference" = "difference"
-    )
-  } else {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Median Difference" = "difference"
-    )
-  }
+  diff_name <- if (!x[["bayesian"]]) "Mean Difference" else "Median Difference"
+  names(summary_table_agg)[
+    names(summary_table_agg) == "Difference"
+  ] <- diff_name
 
-  summary_table <- .format_summary_table(summary_table_formatted)
+  summary_table <- .format_summary_table(summary_table_agg)
   direction <- if (x[["direction"]] == -1) "Lower" else "Higher"
 
   model_info <- .format_model_info_string(
@@ -571,37 +579,51 @@ summary.cs_anchor_group_within <- function(object, ...) {
 #' @return No return value, called for side effects only
 #' @export
 summary.cs_anchor_group_within_sensitivity <- function(object, ...) {
-  summary_table_formatted <- object[["anchor_results"]] |>
-    dplyr::rename(
-      "MID Improvement" = "mid_improvement",
-      "MID Deterioration" = "mid_deterioration",
-      "Difference" = "difference",
-      "CI-Level" = "ci",
-      "[Lower" = "lower",
-      "Upper]" = "upper",
-      "Category" = "category"
-    )
+  has_group <- "group" %in% names(object[["anchor_results"]])
 
-  if (.has_group(summary_table_formatted)) {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Group" = "group"
-    )
-  }
-
-  if (!object[["bayesian"]]) {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Mean Difference" = "Difference"
-    )
+  if (has_group) {
+    summary_table_agg <- object[["anchor_results"]] |>
+      dplyr::group_by(group, category)
   } else {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Median Difference" = "Difference"
-    )
+    summary_table_agg <- object[["anchor_results"]] |>
+      dplyr::group_by(category)
   }
 
-  summary_table <- .format_summary_table(summary_table_formatted)
+  summary_table_agg <- summary_table_agg |>
+    dplyr::summarise(
+      Difference = round(dplyr::first(difference), 2),
+      `Min. MID` = min(mid_improvement, na.rm = TRUE),
+      `Max. MID` = max(mid_improvement, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      category = as.character(category),
+      category = dplyr::if_else(
+        is.na(category) | trimws(category) == "",
+        "Point estimate equals MID",
+        category
+      )
+    ) |>
+    dplyr::rename(Category = category)
+
+  if (has_group) {
+    summary_table_agg <- summary_table_agg |>
+      dplyr::rename(Group = group)
+  }
+
+  diff_name <- if (!object[["bayesian"]]) {
+    "Mean Difference"
+  } else {
+    "Median Difference"
+  }
+  names(summary_table_agg)[
+    names(summary_table_agg) == "Difference"
+  ] <- diff_name
+
+  summary_table <- .format_summary_table(
+    summary_table_agg,
+    table_title = "-- Results"
+  )
 
   format_range <- function(x) {
     if (is.null(x)) {
@@ -639,7 +661,6 @@ summary.cs_anchor_group_within_sensitivity <- function(object, ...) {
 
   .print_strings(model_info, summary_table)
 }
-
 
 #' Summary Method for the Anchor-Based Approach for Groups (Between)
 #'
@@ -699,33 +720,41 @@ summary.cs_anchor_group_between <- function(object, ...) {
 #' @return No return value, called for side effects only
 #' @export
 summary.cs_anchor_group_between_sensitivity <- function(object, ...) {
-  summary_table_formatted <- object[["anchor_results"]] |>
+  summary_table_agg <- object[["anchor_results"]] |>
+    dplyr::group_by(reference, comparison, category) |>
+    dplyr::summarise(
+      Difference = round(dplyr::first(difference), 2),
+      `Min. MID` = min(mid_improvement, na.rm = TRUE),
+      `Max. MID` = max(mid_improvement, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      category = as.character(category),
+      category = dplyr::if_else(
+        is.na(category) | trimws(category) == "",
+        "Point estimate equals MID",
+        category
+      )
+    ) |>
     dplyr::rename(
-      "MID Improvement" = "mid_improvement",
-      "MID Deterioration" = "mid_deterioration",
-      "Group 1" = "reference",
-      "Group 2" = "comparison",
-      "CI-Level" = "ci",
-      "[Lower" = "lower",
-      "Upper]" = "upper",
-      "Category" = "category",
-      "n (1)" = "n_reference",
-      "n (2)" = "n_comparison"
+      "Group 1" = reference,
+      "Group 2" = comparison,
+      Category = category
     )
 
-  if (!object[["bayesian"]]) {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Mean Difference" = "difference"
-    )
+  diff_name <- if (!object[["bayesian"]]) {
+    "Mean Difference"
   } else {
-    summary_table_formatted <- dplyr::rename(
-      summary_table_formatted,
-      "Median Difference" = "difference"
-    )
+    "Median Difference"
   }
+  names(summary_table_agg)[
+    names(summary_table_agg) == "Difference"
+  ] <- diff_name
 
-  summary_table <- .format_summary_table(summary_table_formatted)
+  summary_table <- .format_summary_table(
+    summary_table_agg,
+    table_title = "-- Results"
+  )
 
   format_range <- function(x) {
     if (is.null(x)) {

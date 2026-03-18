@@ -92,19 +92,11 @@
       Approach:  Anchor-based (within groups) Sensitivity
       Better is: Lower
       
-      Mid Improvement | Mid Deterioration | Group | Median Difference |  Lower
-      ------------------------------------------------------------------------
-      3               |                 3 |     A |             -9.93 | -11.40
-      3               |                 3 |     B |             -4.54 |  -5.31
-      5               |                 5 |     A |             -9.90 | -11.32
-      5               |                 5 |     B |             -4.55 |  -5.29
-      
-      Mid Improvement | Upper | Ci Level | N |                                  Category
-      ----------------------------------------------------------------------------------
-      3               | -7.89 |     0.95 | 5 |       Large clinically significant effect
-      3               | -3.49 |     0.95 | 5 |       Large clinically significant effect
-      5               | -7.93 |     0.95 | 5 |       Large clinically significant effect
-      5               | -3.50 |     0.95 | 5 | Not significantly less than the threshold
+      Group |                                  Category | Median Difference | Min Mid | Max Mid
+      -----------------------------------------------------------------------------------------
+      A     |       Large clinically significant effect |             -9.93 |       3 |       5
+      B     |       Large clinically significant effect |             -4.54 |       3 |       3
+      B     | Not significantly less than the threshold |             -4.55 |       5 |       5
       
 
 ---
@@ -124,19 +116,13 @@
       Better is:               Lower
       Outcome:                 score
       
-      Mid Improvement | Mid Deterioration | Group | Median Difference |  Lower
-      ------------------------------------------------------------------------
-      3               |                 3 |     A |             -9.93 | -11.40
-      3               |                 3 |     B |             -4.54 |  -5.31
-      5               |                 5 |     A |             -9.90 | -11.32
-      5               |                 5 |     B |             -4.55 |  -5.29
+      -- Results
       
-      Mid Improvement | Upper | Ci Level | N |                                  Category
-      ----------------------------------------------------------------------------------
-      3               | -7.89 |     0.95 | 5 |       Large clinically significant effect
-      3               | -3.49 |     0.95 | 5 |       Large clinically significant effect
-      5               | -7.93 |     0.95 | 5 |       Large clinically significant effect
-      5               | -3.50 |     0.95 | 5 | Not significantly less than the threshold
+      Group |                                  Category | Median Difference | Min Mid | Max Mid
+      -----------------------------------------------------------------------------------------
+      A     |       Large clinically significant effect |             -9.93 |       3 |       5
+      B     |       Large clinically significant effect |             -4.54 |       3 |       3
+      B     | Not significantly less than the threshold |             -4.55 |       5 |       5
       
 
 ---
@@ -150,15 +136,15 @@
       Approach:  Anchor-based (between groups) Sensitivity
       Better is: Lower
       
-      Mid Improvement | Mid Deterioration | Group 1 |      Group 2
-      ------------------------------------------------------------
-      3               |                 3 | Control | Intervention
-      10              |                10 | Control | Intervention
+      Group 1 |      Group 2 |                                              Category
+      ------------------------------------------------------------------------------
+      Control | Intervention |                   Large clinically significant effect
+      Control | Intervention | Statistically significant but not clinically relevant
       
-      Mid Improvement | Median Difference | Lower | Upper | Ci Level | N 1 | N 2 |                                              Category
-      ----------------------------------------------------------------------------------------------------------------------------------
-      3               |             -7.92 | -9.01 | -6.75 |     0.95 |  10 |  10 |                   Large clinically significant effect
-      10              |             -7.92 | -9.01 | -6.74 |     0.95 |  10 |  10 | Statistically significant but not clinically relevant
+      Group 1 | Median Difference | Min Mid | Max Mid
+      -----------------------------------------------
+      Control |             -7.92 |       3 |       3
+      Control |             -7.92 |      10 |      10
       
 
 ---
@@ -175,14 +161,16 @@
       Better is:               Lower
       Outcome:                 score
       
-      Mid Improvement | Mid Deterioration | Group 1 |      Group 2
-      ------------------------------------------------------------
-      3               |                 3 | Control | Intervention
-      10              |                10 | Control | Intervention
+      -- Results
       
-      Mid Improvement | Median Difference | Lower | Upper | Ci Level | N 1 | N 2 |                                              Category
-      ----------------------------------------------------------------------------------------------------------------------------------
-      3               |             -7.92 | -9.01 | -6.75 |     0.95 |  10 |  10 |                   Large clinically significant effect
-      10              |             -7.92 | -9.01 | -6.74 |     0.95 |  10 |  10 | Statistically significant but not clinically relevant
+      Group 1 |      Group 2 |                                              Category
+      ------------------------------------------------------------------------------
+      Control | Intervention |                   Large clinically significant effect
+      Control | Intervention | Statistically significant but not clinically relevant
+      
+      Group 1 | Median Difference | Min Mid | Max Mid
+      -----------------------------------------------
+      Control |             -7.92 |       3 |       3
+      Control |             -7.92 |      10 |      10
       
 
