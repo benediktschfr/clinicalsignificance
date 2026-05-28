@@ -3,7 +3,7 @@ Type: Package
 Title: A Toolbox for Clinical Significance Analyses in Intervention Studies
 Version: 3.0.0.9000
 Authors@R: 
-    person("Benedikt", "Claus", , "benediktclaus@outlook.com", role = c("aut", "cre"),
+    person("Benedikt", "Schäfer", , "benediktclaus@outlook.com", role = c("aut", "cre"),
            comment = c(ORCID = "0000-0001-9501-0954"))
 Description: A clinical significance analysis can be used to determine if an 
     intervention has a meaningful or practical effect for patients. You provide 
@@ -39,5 +39,5 @@ Suggests:
     vdiffr
 Config/testthat/edition: 3
 VignetteBuilder: knitr
-URL: https://benediktclaus.github.io/clinicalsignificance/, https://github.com/benediktclaus/clinicalsignificance
-BugReports: https://github.com/benediktclaus/clinicalsignificance/issues
+URL: https://benediktschfr.github.io/clinicalsignificance/, https://github.com/benediktschfr/clinicalsignificance
+BugReports: https://github.com/benediktschfr/clinicalsignificance/issues

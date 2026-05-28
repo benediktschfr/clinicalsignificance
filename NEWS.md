@@ -12,6 +12,7 @@
 - Implemented informative console messages via `cli` to guide users (e.g., notifying when a specific method like `JT` or `HLM` ignores a provided `reliability` parameter).
 - Consistent handling of symmetrical thresholds: If deterioration thresholds (like `mid_deterioration` or `pct_deterioration`) are omitted, they now robustly default to their respective improvement counterparts, even within complex sensitivity grids.
 - S3 classes and internal object structures have been unified across all analytical approaches, ensuring a smooth downstream experience (e.g., for plotting).
+- Change maintainer name and associated URLS.
 
 # clinicalsignificance 3.0.0
 ## Breaking changes
