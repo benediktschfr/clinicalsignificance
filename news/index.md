@@ -2,7 +2,11 @@
 
 ## clinicalsignificance (development version)
 
+- Change maintainer name and associated URLS.
+
 ## clinicalsignificance 3.0.0
+
+CRAN release: 2025-11-27
 
 ### Breaking changes
 
@@ -138,11 +142,11 @@ CRAN release: 2022-12-08
 ## clinicalsignificance 1.1.0
 
 - Fix HLM method empirical bayes estimation
-  ([\#2](https://github.com/benediktclaus/clinicalsignificance/issues/2)).
+  ([\#2](https://github.com/benediktschfr/clinicalsignificance/issues/2)).
   This now relies on the lme4 package
 - Consider the instrument direction for group level summaries in the HA
   method
-  ([\#1](https://github.com/benediktclaus/clinicalsignificance/issues/1))
+  ([\#1](https://github.com/benediktschfr/clinicalsignificance/issues/1))
   which was not done in the initial release
 
 ## clinicalsignificance 1.0.1

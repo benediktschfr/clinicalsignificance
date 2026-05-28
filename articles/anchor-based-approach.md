@@ -18,6 +18,7 @@ function to perform both individual- and group-level analyses using this
 approach.
 
 ``` r
+
 library(clinicalsignificance)
 ```
 
@@ -39,6 +40,7 @@ pre-post analysis, we must specify which time points to compare using
 the `pre` and `post` arguments.
 
 ``` r
+
 # Analyze individual change from the first to the fourth measurement
 anchor_individual <- claus_2020 |> 
   cs_anchor(
@@ -85,6 +87,7 @@ represents a patient.
   deterioration.
 
 ``` r
+
 plot(anchor_individual)
 #> Ignoring unknown labels:
 #> • colour : "Group"
@@ -99,6 +102,7 @@ Placebo-Amplification (PA) group. We can analyze the clinical
 significance for each group by specifying the `group` argument.
 
 ``` r
+
 anchor_grouped <- claus_2020 |> 
   cs_anchor(
     id = id,
@@ -150,6 +154,7 @@ Let’s analyze the `who` (WHO-5 Well-Being Index) outcome from the same
 dataset, assuming an MID of 4.
 
 ``` r
+
 anchor_positive <- claus_2020 |> 
   cs_anchor(
     id = id,
@@ -186,6 +191,7 @@ First, let’s assess the average change within each treatment group
 separately.
 
 ``` r
+
 anchor_group_within <- claus_2020 |> 
   cs_anchor(
     id = id,
@@ -225,6 +231,7 @@ setting `effect = "between"`. The function will calculate the difference
 in change scores between the groups.
 
 ``` r
+
 anchor_group_between <- claus_2020 |> 
   cs_anchor(
     id = id,

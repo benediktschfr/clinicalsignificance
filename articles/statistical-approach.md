@@ -23,6 +23,7 @@ method is a key component of the powerful **Combined Approach**, which
 is often the most informative way to assess clinical significance.
 
 ``` r
+
 library(clinicalsignificance)
 ```
 
@@ -53,6 +54,7 @@ function will automatically calculate the mean and standard deviation
 for the clinical sample from the `claus_2020` pre-treatment data.
 
 ``` r
+
 # Perform the statistical analysis
 stat_results <- claus_2020 |>
   cs_statistical(
@@ -112,6 +114,7 @@ quadrants:
 - **Top-Left**: Functional before, clinical after (Deteriorated).
 
 ``` r
+
 plot(stat_results)
 #> Ignoring unknown labels:
 #> • colour : "Group"
@@ -126,6 +129,7 @@ to the functional population differs between the treatment groups (TAU
 vs. PA).
 
 ``` r
+
 # Grouped statistical analysis
 stat_grouped <- claus_2020 |>
   cs_statistical(
@@ -178,6 +182,7 @@ compared to only 15.8% in the Treatment as Usual (TAU) group.
 The plot makes this difference visually apparent:
 
 ``` r
+
 plot(stat_grouped)
 ```
 

@@ -24,6 +24,7 @@ This vignette demonstrates how to use the
 function to apply this approach.
 
 ``` r
+
 library(clinicalsignificance)
 ```
 
@@ -34,6 +35,7 @@ depression treatment trials is a 50% reduction in symptom scores. We
 will set this as our `pct_improvement` cutoff.
 
 ``` r
+
 # Analyze change using a 50% improvement cutoff
 pct_results <- claus_2020 |>
   cs_percentage(
@@ -77,6 +79,7 @@ individual’s starting score. This means the boundaries of the
 “unchanged” area are not parallel lines.
 
 ``` r
+
 plot(pct_results)
 #> Ignoring unknown labels:
 #> • colour : "Group"
@@ -90,6 +93,7 @@ We can also explore if the proportion of “responders” differs between
 the treatment groups (TAU vs. PA).
 
 ``` r
+
 # Grouped analysis with a 50% improvement cutoff
 pct_grouped <- claus_2020 |>
   cs_percentage(
@@ -132,6 +136,7 @@ reduction compared to the Treatment as Usual (TAU) group (10.5%).
 The plot clearly visualizes this difference:
 
 ``` r
+
 plot(pct_grouped)
 ```
 
@@ -148,6 +153,7 @@ be considered a significant deterioration, while a larger change (e.g.,
 50%) is required for improvement.
 
 ``` r
+
 pct_asymmetric <- claus_2020 |>
   cs_percentage(
     id = id,

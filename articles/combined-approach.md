@@ -20,6 +20,7 @@ have truly “Recovered”. This vignette demonstrates how to use the
 function to apply these powerful models.
 
 ``` r
+
 library(clinicalsignificance)
 ```
 
@@ -42,6 +43,7 @@ the BDI-II (`m_functional`, `sd_functional`) and an estimate of the
 instrument’s reliability.
 
 ``` r
+
 # Perform the JT combined analysis
 jt_combined <- claus_2020 |>
   cs_combined(
@@ -101,6 +103,7 @@ distribution-based approach) and the cutoff lines for population status
 - **Shaded Area**: The zone of “no reliable change”.
 
 ``` r
+
 plot(jt_combined, show_group = "category")
 #> Ignoring unknown labels:
 #> • colour : "Group"
@@ -136,6 +139,7 @@ We use the same functional population data as before but replace the
 `reliability` argument with `mid_improvement`.
 
 ``` r
+
 # Perform the anchor-based combined analysis
 anchor_combined <- claus_2020 |>
   cs_combined(
@@ -195,6 +199,7 @@ The plot is interpreted similarly, but the shaded area is now defined by
 the MID instead of the Reliable Change Index.
 
 ``` r
+
 plot(anchor_combined, show_group = "category")
 #> Ignoring unknown labels:
 #> • colour : "Group"

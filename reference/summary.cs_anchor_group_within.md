@@ -51,6 +51,6 @@ summary(cs_results)
 #> 
 #> Difference |  Lower | Upper | Ci Level |  N |                               Category
 #> ------------------------------------------------------------------------------------
-#> -9.37      | -12.97 | -5.81 |     0.95 | 40 | Probably clinically significant effect
+#> -9.36      | -12.97 | -5.81 |     0.95 | 40 | Probably clinically significant effect
 #> 
 ```

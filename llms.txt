@@ -41,12 +41,14 @@ significance analysis. Each approach answers a specific question:
 Install the stable version from CRAN:
 
 ``` r
+
 install.packages("clinicalsignificance")
 ```
 
 Or the development version from GitHub:
 
 ``` r
+
 # install.packages("pak")
 pak::pak("benediktclaus/clinicalsignificance")
 ```
@@ -59,6 +61,7 @@ package) showed a **reliable change** AND moved into a **functional
 population** range.
 
 ``` r
+
 library(clinicalsignificance)
 library(ggplot2)
 
@@ -91,6 +94,7 @@ Reliable improvement, but still in clinical range. \* **Unchanged
 worsening.
 
 ``` r
+
 # 3. Get a summary table
 summary(results_combined)
 #> 

@@ -24,6 +24,7 @@ This vignette demonstrates how to use the
 function to assess reliable change.
 
 ``` r
+
 library(clinicalsignificance)
 ```
 
@@ -40,6 +41,7 @@ The default and most widely used method is that of Jacobson and Truax
 reliability for the BDI-II, which was estimated at 0.801.
 
 ``` r
+
 # Analyze reliable change using the JT method
 dist_jt <- claus_2020 |>
   cs_distribution(
@@ -80,6 +82,7 @@ instrument’s reliability. Any change within this area is considered
 statistically unreliable.
 
 ``` r
+
 plot(dist_jt)
 #> Ignoring unknown labels:
 #> • colour : "Group"
@@ -97,6 +100,7 @@ method (`rci_method = "HA"`) is known to be more liberal.
 Let’s compare it to the JT method:
 
 ``` r
+
 dist_ha <- claus_2020 |>
   cs_distribution(
     id = id,
@@ -149,6 +153,7 @@ more robust estimate of change. To use it, simply set
 and estimates reliability from the data.
 
 ``` r
+
 dist_hlm <- claus_2020 |>
   cs_distribution(
     id = id,
@@ -188,6 +193,7 @@ clinical significance category. This is excellent for exploring response
 heterogeneity over time.
 
 ``` r
+
 plot(dist_hlm)
 #> Ignoring unknown labels:
 #> • colour : "Group"

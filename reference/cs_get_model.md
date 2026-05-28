@@ -42,10 +42,10 @@ cs_get_model(cs_results)
 #>    Data: data
 #> REML criterion at convergence: 1106.347
 #> Random effects:
-#>  Groups   Name        Std.Dev. Corr 
-#>  id       (Intercept) 6.344         
-#>           time        2.766    -0.08
-#>  Residual             5.316         
+#>  Groups   Name        Std.Dev. Corr  
+#>  id       (Intercept) 6.344          
+#>           time        2.766    -0.08 
+#>  Residual             5.316          
 #> Number of obs: 160, groups:  id, 40
 #> Fixed Effects:
 #> (Intercept)         time  

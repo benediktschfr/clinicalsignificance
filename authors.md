@@ -2,13 +2,13 @@
 
 ## Authors
 
-- **Benedikt Claus**. Author, maintainer.
+- **Benedikt Schäfer**. Author, maintainer.
   [](https://orcid.org/0000-0001-9501-0954)
 
 ## Citation
 
 Source:
-[`inst/CITATION`](https://github.com/benediktclaus/clinicalsignificance/blob/main/inst/CITATION)
+[`inst/CITATION`](https://github.com/benediktschfr/clinicalsignificance/blob/main/inst/CITATION)
 
 Claus BB, Wager J, Bonnet U (2024). “clinicalsignificance: Clinical
 Significance Analyses of Intervention Studies in R.” *Journal of
