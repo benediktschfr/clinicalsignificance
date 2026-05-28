@@ -1,4 +1,5 @@
 # clinicalsignificance (development version)
+- Change maintainer name and associated URLS.
 
 # clinicalsignificance 3.0.0
 ## Breaking changes
